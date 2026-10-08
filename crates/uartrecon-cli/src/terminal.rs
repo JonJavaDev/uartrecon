@@ -21,7 +21,7 @@ use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::terminal as ct;
 use uartrecon_core::serial::config::{SerialConfig, SerialFormat};
 use uartrecon_core::serial::connection::Connection;
@@ -336,6 +336,11 @@ fn run_loop_tty(
         if event::poll(Duration::from_millis(15))? {
             match event::read()? {
                 Event::Key(key) => {
+                    // Hanya proses tombol yang benar-benar ditekan.
+                    // Tanpa filter ini, event Press + Release = input dobel.
+                    if key.kind != KeyEventKind::Press {
+                        continue;
+                    }
                     if key.modifiers.contains(KeyModifiers::CONTROL)
                         && matches!(key.code, KeyCode::Char(']') | KeyCode::Char('c'))
                     {
