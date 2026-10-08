@@ -1,87 +1,184 @@
-# UARTRecon
+<div align="center">
 
-Toolkit buat ngulik perangkat embedded lewat UART (USB-to-TTL). Fokusnya
-detect, capture, analyze, export. Semua read-only, nggak ada operasi
-tulis/erase flash.
+<img src="assets/banner.svg" alt="UARTRecon" width="820">
 
-Dibuat pakai Rust, jalan di Windows, Linux, dan macOS.
+**Toolkit buat ngulik perangkat embedded lewat UART.**
+
+Deteksi baudrate otomatis, capture, analisis firmware, sampai recovery — semua read-only.
+
+[![CI](https://github.com/JonJavaDev/uartrecon/actions/workflows/ci.yml/badge.svg)](https://github.com/JonJavaDev/uartrecon/actions/workflows/ci.yml)
+[![Release](https://github.com/JonJavaDev/uartrecon/actions/workflows/release.yml/badge.svg)](https://github.com/JonJavaDev/uartrecon/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-informational.svg)](#install)
+
+[Install](#install) · [Pakai](#pakai) · [Screenshot](#screenshot) · [Fitur](#fitur) · [Docs](docs/)
+
+</div>
+
+---
 
 ## Kenapa
 
-Kalau nemu STB/router/modem bekas, biasanya baudrate-nya nggak diketahui.
-Manualnya coba 115200, garbage, coba 57600, garbage, coba 9600, baru ketemu.
+Kalau nemu STB/router/modem bekas, biasanya baudrate-nya nggak diketahui. Cara manual:
+coba 115200 → garbage → coba 57600 → garbage → coba 9600 → baru ketemu.
+
 UARTRecon otomatis nyari baudrate + format yang bener, terus nyimpen hasilnya.
+Semua **read-only** — nggak ada operasi tulis/erase flash.
+
+## Screenshot
+
+<img src="assets/screenshot-gui.png" alt="GUI UARTRecon" width="900">
+
+<sub>GUI desktop: terminal live, deteksi, analisis firmware, dan logic analyzer.</sub>
+
+**CLI:**
+
+<img src="assets/demo-cli.svg" alt="CLI demo" width="820">
 
 ## Fitur
 
-**Detect & capture**
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**Detect & Capture**
 - Daftar serial port + deteksi chip USB-UART (CP2102, CH340, FT232, PL2303)
-- Scan baudrate otomatis + scoring (confidence 0-100)
+- Scan baudrate otomatis + scoring (confidence 0–100)
 - Deteksi format UART: 8N1, 8E1, 8O1, 8N2, 7E1, 7O1
-- Capture RX/TX terpisah, simpan sebagai sesi + hash SHA-256
+- Capture RX/TX terpisah + hash SHA-256
 - Fingerprint: U-Boot, Linux, BusyBox, vendor/SoC
 
-**Analisis**
-- Logic analyzer: decode UART dari waveform (bit period, baud fisik)
-- Signature scanner (mirip binwalk): SquashFS, JFFS2, UBIFS, gzip, xz, uImage, dll
-- Entropy: deteksi bagian compressed/encrypted
-- Strings: ekstraksi teks + pola menarik (password, URL, path)
-- Stats, diff dua capture, search (literal/regex/hex)
+</td>
+<td width="50%" valign="top">
 
-**Operasi device**
-- Terminal interaktif real-time (kayak PuTTY, Ctrl+] buat keluar)
-- Safety: blokir command yang nyasar ke partisi kritis (bootloader, env)
+**Analisis**
+- Logic analyzer: decode UART dari waveform
+- Signature scanner (mirip binwalk): SquashFS, JFFS2, UBIFS, gzip, xz, uImage, …
+- Entropy: deteksi bagian compressed/encrypted
+- Strings: ekstraksi teks + pola menarik
+- Stats, diff, search (literal/regex/hex)
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+**Operasi Device**
+- Terminal interaktif real-time (Ctrl+] keluar)
+- Safety: blokir command ke partisi kritis
 - Backup & restore partisi via SD card
 - Flash LEDE/OpenWrt ke STB (workflow otomatis)
 
-**Bahasa**: Indonesia & English (bisa diganti dari menu atau `uartrecon lang en`)
+</td>
+<td valign="top">
+
+**Interfaces**
+- CLI + menu interaktif
+- TUI (ratatui) dengan panel waveform
+- GUI desktop (egui/eframe)
+- Bahasa: Indonesia & English
+
+</td>
+</tr>
+</table>
 
 ## Install
 
-**Windows** — ada installer di folder `installer/`:
-- `uartrecon-full-0.1.0-setup.exe` (CLI + TUI + GUI)
-- `uartrecon-gui-0.1.0-setup.exe` (GUI saja)
-- `uartrecon-cli-0.1.0-setup.exe` (CLI + TUI)
-- `uartrecon-0.1.0.msi` (MSI)
+### Windows — installer
 
-**Dari source** (semua platform):
+Unduh dari [Releases](https://github.com/JonJavaDev/uartrecon/releases):
+
+| Installer | Isi |
+|-----------|-----|
+| `uartrecon-full-*-setup.exe` | CLI + TUI + GUI |
+| `uartrecon-gui-*-setup.exe` | GUI saja |
+| `uartrecon-cli-*-setup.exe` | CLI + TUI |
+| `uartrecon-*.msi` | MSI package |
+
+### Dari source (semua platform)
+
 ```bash
 git clone https://github.com/JonJavaDev/uartrecon
 cd uartrecon
 cargo build --release
 ```
 
-**Linux** butuh `libudev-dev`. **macOS** butuh Xcode Command Line Tools.
+**Dependensi:**
+- **Linux**: `libudev-dev pkg-config` (dan `libgtk-3-dev libxkbcommon-dev libwayland-dev` untuk GUI)
+- **macOS**: Xcode Command Line Tools
+- **Windows**: Visual Studio Build Tools (C++)
 
 ## Pakai
 
-Paling gampang:
+Paling gampang — langsung buka menu:
+
 ```bash
 cargo run
 ```
-Langsung buka menu interaktif.
 
-Atau langsung:
+Atau langsung ke subcommand:
+
 ```bash
-uartrecon ports                          # daftar port
-uartrecon terminal COM3 --baud 115200    # terminal interaktif
-uartrecon scan COM3                      # scan baudrate otomatis
-uartrecon analyze capture.raw            # analisis file
-uartrecon signatures --file firmware.bin # scan format firmware
-uartrecon safety                         # lihat kebijakan keamanan
+# Daftar port
+uartrecon ports
+
+# Terminal interaktif (seperti PuTTY, Ctrl+] keluar)
+uartrecon terminal COM3 --baud 115200
+
+# Scan baudrate otomatis
+uartrecon scan COM3
+
+# Analisis file capture / firmware
+uartrecon analyze capture.raw
+uartrecon signatures --file firmware.bin
+uartrecon strings --file firmware.bin --interesting
+uartrecon entropy --file firmware.bin
+
+# Safety & recovery
+uartrecon safety
+uartrecon safety --check "flash_erase /dev/mtd1 0 1"
+uartrecon recover plan --device STB
+
+# Ganti bahasa
+uartrecon lang en
 ```
 
-Cek `uartrecon --help` atau `uartrecon <command> --help`.
+Lihat semua: `uartrecon --help`
 
-## Catatan
+## Catatan teknis
 
-USB-to-UART biasa nggak kasih timing sinyal mentah ke aplikasi, jadi deteksi
-baud pakai scanning + scoring, bukan pengukuran fisik. Buat baud fisik beneran
+USB-to-UART biasa nggak kasih timing sinyal mentah ke aplikasi, jadi deteksi baud
+pakai **scanning + scoring**, bukan pengukuran fisik. Untuk baud fisik sebenarnya
 perlu logic analyzer (fitur `logic`).
 
 Kalau nggak ada traffic yang bisa diandalkan, tool bilang terus terang
-"no reliable traffic detected" — nggak maksa nebak.
+`No reliable traffic detected` — nggak maksa nebak.
+
+Selengkapnya: [`docs/limitations.md`](docs/limitations.md)
+
+## Struktur
+
+```
+crates/
+├── uartrecon-core/   # engine (tanpa clap/ratatui/egui)
+├── uartrecon-cli/    # binary `uartrecon`
+├── uartrecon-tui/    # binary `uartrecon-tui`
+└── uartrecon-gui/    # binary `uartrecon-gui`
+```
+
+`uartrecon-core` nggak bergantung ke CLI/TUI/GUI — semua pakai engine yang sama.
+
+## Kontribusi
+
+```bash
+cargo fmt --all
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
+
+Lihat [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Lisensi
 
-MIT
+[MIT](LICENSE)

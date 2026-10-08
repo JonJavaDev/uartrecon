@@ -1,0 +1,42 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" font-family="Consolas,Menlo,monospace">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1b1f27"/>
+      <stop offset="100%" stop-color="#12151b"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="520" rx="10" fill="url(#bg)"/>
+  <rect x="0" y="0" width="900" height="34" rx="10" fill="#252a33"/>
+  <rect x="0" y="24" width="900" height="10" fill="#252a33"/>
+  <circle cx="22" cy="17" r="6" fill="#ff5f56"/>
+  <circle cx="44" cy="17" r="6" fill="#ffbd2e"/>
+  <circle cx="66" cy="17" r="6" fill="#27c93f"/>
+  <text x="450" y="22" fill="#8b93a1" font-size="13" text-anchor="middle">uartrecon - PowerShell</text>
+
+  <g font-size="14">
+    <text x="24" y="66" fill="#5ac8fa">PS C:\&gt;</text>
+    <text x="110" y="66" fill="#e6e6e6">uartrecon ports</text>
+
+    <text x="24" y="98" fill="#c8cdd6" font-weight="bold">UART DEVICES</text>
+    <text x="24" y="120" fill="#4a5262">--------------------</text>
+
+    <text x="24" y="150" fill="#e6e6e6">COM3</text>
+    <text x="24" y="172" fill="#8b93a1">  Type         :</text><text x="180" y="172" fill="#e6e6e6">USB</text>
+    <text x="24" y="194" fill="#8b93a1">  Chip         :</text><text x="180" y="194" fill="#7ee787">CP2102/CP210x</text>
+    <text x="24" y="216" fill="#8b93a1">  Manufacturer :</text><text x="180" y="216" fill="#e6e6e6">Silicon Labs</text>
+    <text x="24" y="238" fill="#8b93a1">  VID:PID      :</text><text x="180" y="238" fill="#e6e6e6">10C4:EA60</text>
+
+    <text x="24" y="280" fill="#5ac8fa">PS C:\&gt;</text>
+    <text x="110" y="280" fill="#e6e6e6">uartrecon scan COM3</text>
+
+    <text x="24" y="312" fill="#c8cdd6" font-weight="bold">UART SCAN</text>
+    <text x="24" y="334" fill="#8b93a1">  Port         :</text><text x="180" y="334" fill="#e6e6e6">COM3</text>
+    <text x="24" y="356" fill="#8b93a1">  Chip         :</text><text x="180" y="356" fill="#e6e6e6">CP2102/CP210x</text>
+    <text x="24" y="382" fill="#8b93a1">[*] Memindai 8 kandidat baudrate...</text>
+    <text x="24" y="408" fill="#8b93a1">Ranking baudrate:</text>
+    <text x="24" y="430" fill="#e6e6e6">  9600      12  (18 bytes)</text>
+    <text x="24" y="452" fill="#e6e6e6">  57600     21  (31 bytes)</text>
+    <text x="24" y="474" fill="#7ee787" font-weight="bold">  115200    97  (186 bytes) &lt;--</text>
+    <text x="24" y="496" fill="#e6e6e6">  230400     5  (9 bytes)</text>
+  </g>
+</svg>
