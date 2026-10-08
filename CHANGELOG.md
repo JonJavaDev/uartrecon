@@ -42,5 +42,5 @@ dan proyek ini mengikuti [Semantic Versioning](https://semver.org/).
 - CLI + TUI (ratatui).
 - Dataset regression test (tanpa hardware).
 
-[Unreleased]: https://github.com/USER/uartrecon/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/USER/uartrecon/releases/tag/v0.1.0
+[Unreleased]: https://github.com/JonJavaDev/uartrecon/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/JonJavaDev/uartrecon/releases/tag/v0.1.0

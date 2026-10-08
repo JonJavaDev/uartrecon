@@ -46,7 +46,7 @@ UARTRecon otomatis nyari baudrate + format yang bener, terus nyimpen hasilnya.
 
 **Dari source** (semua platform):
 ```bash
-git clone https://github.com/USER/uartrecon
+git clone https://github.com/JonJavaDev/uartrecon
 cd uartrecon
 cargo build --release
 ```
