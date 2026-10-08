@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- UARTRecon MSI installer (wixl / msitools - open source, WiX v3 schema) -->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*"
+           Name="UARTRecon"
+           Language="1033"
+           Version="0.1.0"
+           Manufacturer="UARTRecon Contributors"
+           UpgradeCode="7f3a2b91-4c6d-4e8f-9a1b-2c3d4e5f6a7b">
+
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine"
+             Description="UART Recon &amp; Analysis Toolkit" />
+
+    <MajorUpgrade DowngradeErrorMessage="Versi UARTRecon lebih baru sudah terpasang." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Property Id="ARPPRODUCTICON" Value="UartReconIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/USER/uartrecon" />
+    <Icon Id="UartReconIcon" SourceFile="../assets/uartrecon.ico" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="UARTRecon" />
+      </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="AppShortcutFolder" Name="UARTRecon" />
+      </Directory>
+      <Directory Id="DesktopFolder" />
+    </Directory>
+
+    <!-- Binary -->
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="cmpCli" Guid="*">
+        <File Id="fileCli" Source="../target/release/uartrecon.exe" KeyPath="yes" />
+      </Component>
+      <Component Id="cmpTui" Guid="*">
+        <File Id="fileTui" Source="../target/release/uartrecon-tui.exe" KeyPath="yes" />
+      </Component>
+      <Component Id="cmpGui" Guid="*">
+        <File Id="fileGui" Source="../target/release/uartrecon-gui.exe" KeyPath="yes" />
+      </Component>
+      <Component Id="cmpReadme" Guid="*">
+        <File Id="fileReadme" Source="../README.md" KeyPath="yes" />
+      </Component>
+      <Component Id="cmpLicense" Guid="*">
+        <File Id="fileLicense" Source="../LICENSE" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <!-- Shortcut Start Menu -->
+    <DirectoryRef Id="AppShortcutFolder">
+      <Component Id="cmpShortcuts" Guid="*">
+        <Shortcut Id="scGui" Name="UARTRecon (GUI)" Target="[INSTALLFOLDER]uartrecon-gui.exe" WorkingDirectory="INSTALLFOLDER" />
+        <Shortcut Id="scCli" Name="UARTRecon (CLI)" Target="[INSTALLFOLDER]uartrecon.exe" WorkingDirectory="INSTALLFOLDER" />
+        <Shortcut Id="scTui" Name="UARTRecon (TUI)" Target="[INSTALLFOLDER]uartrecon-tui.exe" WorkingDirectory="INSTALLFOLDER" />
+        <RemoveFolder Id="rmShortcutFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\UARTRecon" Name="StartMenu" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <!-- Shortcut Desktop -->
+    <DirectoryRef Id="DesktopFolder">
+      <Component Id="cmpDesktop" Guid="*">
+        <Shortcut Id="scDesktop" Name="UARTRecon" Target="[INSTALLFOLDER]uartrecon-gui.exe" WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKCU" Key="Software\UARTRecon" Name="Desktop" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <Feature Id="Main" Title="UARTRecon" Level="1">
+      <ComponentRef Id="cmpCli" />
+      <ComponentRef Id="cmpTui" />
+      <ComponentRef Id="cmpGui" />
+      <ComponentRef Id="cmpReadme" />
+      <ComponentRef Id="cmpLicense" />
+      <ComponentRef Id="cmpShortcuts" />
+      <ComponentRef Id="cmpDesktop" />
+    </Feature>
+  </Product>
+</Wix>

@@ -34,3 +34,9 @@ desktop.ini
 # Backup partisi device (data asli, besar, sensitif - JANGAN commit)
 /backups/*
 !/backups/.gitkeep
+
+# Build output & installer (binary besar - jangan commit)
+/dist/
+*.zip
+*.msi
+*-setup.exe

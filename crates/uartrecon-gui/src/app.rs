@@ -225,6 +225,50 @@ pub struct GuiApp {
     pub toast: Option<(String, Instant)>,
     /// Bagian analisis yang aktif.
     pub analysis_section: AnalysisSection,
+    /// Pelacak laju RX (byte terakhir & waktu).
+    pub rate_tracker: RateTracker,
+}
+
+/// Pelacak laju data RX (untuk statistik live).
+#[derive(Debug, Clone)]
+pub struct RateTracker {
+    last_bytes: usize,
+    last_time: Instant,
+    rate: f64,
+}
+
+impl Default for RateTracker {
+    fn default() -> Self {
+        RateTracker {
+            last_bytes: 0,
+            last_time: Instant::now(),
+            rate: 0.0,
+        }
+    }
+}
+
+impl RateTracker {
+    /// Memperbarui laju berdasarkan total byte saat ini.
+    pub fn update(&mut self, total_bytes: usize) {
+        let now = Instant::now();
+        let dt = now.duration_since(self.last_time).as_secs_f64();
+        if dt >= 0.5 {
+            let db = total_bytes.saturating_sub(self.last_bytes) as f64;
+            // Smoothing (EMA).
+            self.rate = if self.rate == 0.0 {
+                db / dt
+            } else {
+                self.rate * 0.6 + (db / dt) * 0.4
+            };
+            self.last_bytes = total_bytes;
+            self.last_time = now;
+        }
+    }
+
+    /// Laju terakhir (byte/detik).
+    pub fn rate(&self) -> f64 {
+        self.rate
+    }
 }
 
 /// Bagian hasil analisis yang ditampilkan.
@@ -337,6 +381,7 @@ impl GuiApp {
             firmware: None,
             toast: None,
             analysis_section: AnalysisSection::default(),
+            rate_tracker: RateTracker::default(),
         };
         app.refresh_ports();
         app.refresh_sessions("sessions");
@@ -524,6 +569,34 @@ impl GuiApp {
     /// Menambahkan data RX.
     pub fn push_rx(&mut self, data: &[u8]) {
         self.recorder.push_rx(data);
+        self.rate_tracker.update(self.recorder.rx().len());
+    }
+
+    /// Laju RX saat ini (byte/detik).
+    pub fn rx_rate(&self) -> f64 {
+        self.rate_tracker.rate()
+    }
+
+    /// Menyimpan buffer RX sebagai bootlog (txt + json) ke folder sessions.
+    pub fn capture_bootlog(&mut self) {
+        use uartrecon_core::analyzers::bootlog;
+        let data = self.recorder.rx();
+        if data.is_empty() {
+            self.show_toast("Buffer kosong — belum ada data untuk bootlog.");
+            return;
+        }
+        let log = bootlog::parse(data, 0);
+        let dir = std::path::Path::new("sessions").join(&self.session_name);
+        if std::fs::create_dir_all(&dir).is_err() {
+            self.show_toast("Gagal membuat folder sessions.");
+            return;
+        }
+        let txt = dir.join("bootlog.txt");
+        let raw = dir.join("bootlog.raw");
+        let _ = std::fs::write(&txt, log.to_text());
+        let _ = std::fs::write(&raw, data);
+        self.log(format!("Bootlog disimpan: {}", txt.display()));
+        self.show_toast("Bootlog disimpan.");
     }
 
     /// Menambahkan baris log.

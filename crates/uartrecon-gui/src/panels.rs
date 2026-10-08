@@ -178,8 +178,26 @@ pub fn terminal_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
             app.analyze_buffer();
             app.tab = crate::app::Tab::Analysis;
         }
+        if ui.button("Bootlog").clicked() {
+            app.capture_bootlog();
+        }
         ui.separator();
-        ui.label(format!("{} bytes", app.recorder.rx().len()));
+        // Statistik live.
+        let rx = app.recorder.rx().len();
+        let tx = app.recorder.tx().len();
+        ui.label(
+            RichText::new(format!("RX {rx} B · TX {tx} B"))
+                .monospace()
+                .color(Color32::from_rgb(120, 180, 255)),
+        );
+        let rate = app.rx_rate();
+        if rate > 0.0 {
+            ui.label(
+                RichText::new(format!("{rate:.0} B/s"))
+                    .monospace()
+                    .color(Color32::from_rgb(80, 200, 120)),
+            );
+        }
     });
     ui.separator();
 
@@ -195,10 +213,11 @@ pub fn terminal_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
         }
     };
 
+    // Tampilkan sebagai read-only agar tidak bisa di-edit tak sengaja.
     egui::ScrollArea::vertical()
         .stick_to_bottom(true)
         .auto_shrink([false, false])
-        .max_height(ui.available_height() - 80.0)
+        .max_height(ui.available_height() - 90.0)
         .show(ui, |ui| {
             ui.add(
                 egui::TextEdit::multiline(&mut text.as_str())
@@ -214,17 +233,17 @@ pub fn terminal_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
     ui.horizontal_wrapped(|ui| {
         ui.label("Quick:");
         for cmd in [
-            "",
             "help",
             "uname -a",
             "cat /proc/mtd",
             "cat /proc/meminfo",
+            "cat /proc/cpuinfo",
+            "mount",
+            "df -h",
             "ls /dev",
             "ps",
+            "free",
         ] {
-            if cmd.is_empty() {
-                continue;
-            }
             if ui.small_button(cmd).clicked() {
                 app.command_input = cmd.to_string();
             }
@@ -236,7 +255,7 @@ pub fn terminal_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
         let resp = ui.add(
             egui::TextEdit::singleline(&mut app.command_input)
                 .hint_text("mis. cat /proc/mtd  (↑/↓ = riwayat)")
-                .desired_width(320.0),
+                .desired_width(340.0),
         );
 
         // Navigasi riwayat dengan panah.
@@ -255,6 +274,14 @@ pub fn terminal_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
             let cmd = std::mem::take(&mut app.command_input);
             app.push_history(&cmd);
             action = UiAction::Send(cmd);
+        }
+        if ui
+            .button("Copy RX")
+            .on_hover_text("Salin output RX ke clipboard")
+            .clicked()
+        {
+            ui.ctx().copy_text(text.clone());
+            app.show_toast("Output RX disalin ke clipboard.");
         }
     });
 

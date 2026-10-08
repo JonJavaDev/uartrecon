@@ -31,16 +31,51 @@ enum WorkerCmd {
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([1100.0, 720.0])
-            .with_min_inner_size([800.0, 520.0])
-            .with_title("UARTRecon — UART Recon & Analysis Toolkit"),
+            .with_inner_size([1200.0, 780.0])
+            .with_min_inner_size([880.0, 560.0])
+            .with_title("UARTRecon — UART Recon & Analysis Toolkit")
+            .with_app_id("uartrecon"),
         ..Default::default()
     };
     eframe::run_native(
         "UARTRecon",
         options,
-        Box::new(|_cc| Ok(Box::new(App::default()))),
+        Box::new(|cc| {
+            setup_theme(&cc.egui_ctx);
+            Ok(Box::new(App::default()))
+        }),
     )
+}
+
+/// Mengatur tampilan (dark theme, spacing, font size).
+fn setup_theme(ctx: &egui::Context) {
+    ctx.set_visuals(egui::Visuals::dark());
+    ctx.all_styles_mut(|style| {
+        style.spacing.item_spacing = egui::vec2(8.0, 6.0);
+        style.spacing.button_padding = egui::vec2(8.0, 4.0);
+        style.spacing.interact_size.y = 22.0;
+        use egui::{FontFamily, FontId, TextStyle};
+        style.text_styles = [
+            (
+                TextStyle::Heading,
+                FontId::new(20.0, FontFamily::Proportional),
+            ),
+            (TextStyle::Body, FontId::new(14.0, FontFamily::Proportional)),
+            (
+                TextStyle::Button,
+                FontId::new(14.0, FontFamily::Proportional),
+            ),
+            (
+                TextStyle::Small,
+                FontId::new(12.0, FontFamily::Proportional),
+            ),
+            (
+                TextStyle::Monospace,
+                FontId::new(13.0, FontFamily::Monospace),
+            ),
+        ]
+        .into();
+    });
 }
 
 /// State top-level aplikasi (membungkus GuiApp + worker).
@@ -256,19 +291,98 @@ impl eframe::App for App {
 
         let mut pending = UiAction::None;
 
-        // Panel atas: judul + tab.
+        // Panel atas: menu bar + judul + tab.
         egui::Panel::top("top").show(ui, |ui| {
-            ui.horizontal(|ui| {
+            egui::MenuBar::new().ui(ui, |ui| {
+                ui.menu_button("File", |ui| {
+                    if ui.button("Refresh port").clicked() {
+                        self.gui.refresh_ports();
+                    }
+                    if ui.button("Refresh sesi").clicked() {
+                        self.gui.refresh_sessions("sessions");
+                        self.gui.show_toast("Daftar sesi diperbarui.");
+                    }
+                    ui.separator();
+                    if ui.button("Keluar").clicked() {
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                });
+                ui.menu_button("Device", |ui| {
+                    let connected = self.gui.conn == ConnState::Connected;
+                    if ui
+                        .add_enabled(!connected, egui::Button::new("Connect"))
+                        .clicked()
+                        && let Some(port) = self.gui.selected_port.clone()
+                        && let (Some(baud), Some(fmt)) = (
+                            app::parse_baud(&self.gui.baud_input),
+                            app::parse_format(&self.gui.format_input),
+                        )
+                    {
+                        pending =
+                            UiAction::Connect(port, uartrecon_core::SerialConfig::new(baud, fmt));
+                        ui.close();
+                    }
+                    if ui
+                        .add_enabled(connected, egui::Button::new("Disconnect"))
+                        .clicked()
+                    {
+                        pending = UiAction::Disconnect;
+                        ui.close();
+                    }
+                    if ui
+                        .add_enabled(!connected, egui::Button::new("Auto scan"))
+                        .clicked()
+                        && let Some(port) = self.gui.selected_port.clone()
+                    {
+                        pending = UiAction::Scan(port);
+                        ui.close();
+                    }
+                });
+                ui.menu_button("Bantuan", |ui| {
+                    if ui.button("Doctor").clicked() {
+                        self.gui
+                            .log("Jalankan `uartrecon doctor` di CLI untuk cek environment.");
+                        ui.close();
+                    }
+                    if ui.button("Tentang").clicked() {
+                        self.gui
+                            .log("UARTRecon v0.1.0 — UART Recon & Analysis Toolkit (MIT)");
+                        self.gui
+                            .log("read-only first · detect · capture · analyze · export");
+                        ui.close();
+                    }
+                });
+
+                ui.separator();
                 ui.heading("UARTRecon");
                 ui.label(
                     egui::RichText::new("read-only first")
                         .italics()
+                        .small()
                         .color(egui::Color32::from_rgb(80, 200, 120)),
                 );
-                ui.separator();
+
+                // Indikator koneksi (kanan).
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let (txt, col) = match self.gui.conn {
+                        ConnState::Connected => {
+                            ("● Connected", egui::Color32::from_rgb(80, 200, 120))
+                        }
+                        ConnState::Busy => ("● Busy", egui::Color32::from_rgb(230, 190, 80)),
+                        ConnState::Disconnected => ("● Disconnected", egui::Color32::GRAY),
+                    };
+                    ui.label(egui::RichText::new(txt).color(col).strong());
+                    if let Some(port) = &self.gui.selected_port {
+                        ui.label(egui::RichText::new(port).monospace());
+                    }
+                });
+            });
+
+            // Baris tab.
+            ui.horizontal(|ui| {
                 for tab in Tab::ALL {
                     if ui
-                        .selectable_label(self.gui.tab == *tab, tab.title())
+                        .selectable_label(self.gui.tab == *tab, format!("  {}  ", tab.title()))
                         .clicked()
                     {
                         self.gui.tab = *tab;
