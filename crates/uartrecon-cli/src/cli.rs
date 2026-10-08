@@ -366,6 +366,10 @@ pub enum Command {
         /// Kirim line-ending CR (default CR, cocok untuk BusyBox/Linux).
         #[arg(long, default_value = "cr")]
         enter: String,
+        /// Spam Enter dulu N detik (hentikan autoboot U-Boot), lalu interaktif.
+        /// Contoh: --spam 20
+        #[arg(long, default_value_t = 0)]
+        spam: u64,
         /// Simpan seluruh sesi ke file (raw).
         #[arg(long)]
         log: Option<String>,

@@ -141,7 +141,9 @@ pub fn interactive_menu(_color: bool) -> Result<()> {
                 if let Some(port) = pick_port()? {
                     let (baud, fmt) = prompt_config()?;
                     let enter = prompt("Line-ending Enter (cr/lf/crlf)", "cr")?;
-                    terminal(&port, baud, &fmt, &enter, None, true)?;
+                    let spam_s = prompt("Spam Enter dulu? (detik, 0=tidak)", "0")?;
+                    let spam: u64 = spam_s.parse().unwrap_or(0);
+                    terminal(&port, baud, &fmt, &enter, spam, None, true)?;
                 }
             }
             "u" | "U" => {
@@ -1383,10 +1385,11 @@ pub fn terminal(
     baud: u32,
     format: &str,
     enter: &str,
+    spam: u64,
     log: Option<String>,
     color: bool,
 ) -> Result<()> {
-    crate::terminal::terminal(port, baud, format, enter, log, color)
+    crate::terminal::terminal(port, baud, format, enter, spam, log, color)
 }
 
 /// `flash-lede`: workflow flash LEDE/OpenWrt ke rootfs STB.

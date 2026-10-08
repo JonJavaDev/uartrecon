@@ -29,18 +29,23 @@ use uartrecon_core::serial::connection::Connection;
 use crate::ui;
 
 /// Membuka terminal interaktif ke device via UART.
+///
+/// Kalau `spam_secs > 0`, terminal akan spam Enter dulu selama itu (untuk
+/// menghentikan autoboot U-Boot), baru masuk mode interaktif.
 pub fn terminal(
     port: &str,
     baud: u32,
     format: &str,
     enter_mode: &str,
+    spam_secs: u64,
     log_path: Option<String>,
     _color: bool,
 ) -> Result<()> {
     let fmt = SerialFormat::parse(format).context("format tidak valid")?;
     let config = SerialConfig::new(baud, fmt);
 
-    let conn = Connection::open(port, config).context("gagal membuka port")?;
+    let mut conn = Connection::open(port, config).context("gagal membuka port")?;
+    let _ = conn.clear_input();
 
     // Line ending untuk tombol Enter.
     let enter_bytes: Vec<u8> = match enter_mode.to_ascii_lowercase().as_str() {
@@ -48,6 +53,29 @@ pub fn terminal(
         "crlf" | "crnl" => b"\r\n".to_vec(),
         _ => b"\r".to_vec(), // default CR (cocok BusyBox/Linux)
     };
+
+    ui::header("UART TERMINAL");
+    ui::kv("Port", &format!("{port} @ {baud} {}", fmt.label()));
+    ui::kv("Keluar", "Ctrl+]");
+
+    // Fase opsional: spam Enter untuk hentikan autoboot.
+    if spam_secs > 0 {
+        println!("\n[*] Spam ENTER {spam_secs} detik (hentikan autoboot)...");
+        println!("    Kalau baru colok power, lakukan sekarang.\n");
+        let deadline = Instant::now() + Duration::from_secs(spam_secs);
+        while Instant::now() < deadline {
+            let _ = conn.write(&enter_bytes);
+            if let Ok(data) = conn.read_for(Duration::from_millis(50))
+                && !data.is_empty()
+            {
+                print!("{}", String::from_utf8_lossy(&data));
+                let _ = std::io::stdout().flush();
+            }
+        }
+        println!("\n[*] Masuk mode interaktif.\n");
+    } else {
+        println!("\n(mode interaktif - ketik langsung, output device tampil live)\n");
+    }
 
     // Channel: main -> worker (perintah tulis), worker -> main (data baca).
     let (tx_to_dev, rx_to_dev) = mpsc::channel::<Vec<u8>>();
@@ -58,25 +86,32 @@ pub fn terminal(
         worker(conn, rx_to_dev, tx_from_dev);
     });
 
-    ui::header("UART TERMINAL");
-    ui::kv("Port", &format!("{port} @ {baud} {}", fmt.label()));
-    ui::kv("Keluar", "Ctrl+]");
-    println!("\n(mode interaktif - ketik langsung, output device tampil live)\n");
-
     let mut log_file = match &log_path {
         Some(p) => Some(std::fs::File::create(p).context("gagal membuat file log")?),
         None => None,
     };
 
-    ct::enable_raw_mode().context("gagal enable raw mode")?;
+    let raw = enable_raw();
     let result = run_loop(&rx_from_dev, &tx_to_dev, &enter_bytes, &mut log_file);
-    let _ = ct::disable_raw_mode();
+    if raw {
+        let _ = ct::disable_raw_mode();
+    }
 
     println!("\n\n[+] Terminal ditutup.");
     if let Some(p) = &log_path {
         println!("    Log tersimpan: {p}");
     }
     result
+}
+
+/// Aktifkan raw mode kalau stdout adalah terminal asli. Mengembalikan apakah
+/// berhasil (kalau bukan TTY, kita pakai mode line-based).
+fn enable_raw() -> bool {
+    use std::io::IsTerminal;
+    if !std::io::stdin().is_terminal() {
+        return false;
+    }
+    ct::enable_raw_mode().is_ok()
 }
 
 /// Opsi untuk mode U-Boot.
@@ -204,9 +239,11 @@ pub fn uboot(port: &str, baud: u32, format: &str, opts: UbootOptions) -> Result<
         None => None,
     };
 
-    ct::enable_raw_mode().context("gagal enable raw mode")?;
+    let raw = enable_raw();
     let result = run_loop(&rx_from_dev, &tx_to_dev, b"\r", &mut log_file);
-    let _ = ct::disable_raw_mode();
+    if raw {
+        let _ = ct::disable_raw_mode();
+    }
 
     println!("\n\n[+] U-Boot mode ditutup.");
     result
@@ -245,7 +282,25 @@ fn worker(mut conn: Connection, rx_to_dev: Receiver<Vec<u8>>, tx_from_dev: Sende
 }
 
 /// Loop utama: tampilkan output device + baca keyboard.
+///
+/// Kalau stdin bukan terminal (mis. pipa / otomasi), pakai mode line-based:
+/// baca baris dari stdin lalu kirim ke device.
 fn run_loop(
+    rx_from_dev: &Receiver<Vec<u8>>,
+    tx_to_dev: &Sender<Vec<u8>>,
+    enter_bytes: &[u8],
+    log_file: &mut Option<std::fs::File>,
+) -> Result<()> {
+    use std::io::IsTerminal;
+    if std::io::stdin().is_terminal() {
+        run_loop_tty(rx_from_dev, tx_to_dev, enter_bytes, log_file)
+    } else {
+        run_loop_pipe(rx_from_dev, tx_to_dev, log_file)
+    }
+}
+
+/// Mode TTY: baca tombol real-time (butuh raw mode).
+fn run_loop_tty(
     rx_from_dev: &Receiver<Vec<u8>>,
     tx_to_dev: &Sender<Vec<u8>>,
     enter_bytes: &[u8],
@@ -253,8 +308,6 @@ fn run_loop(
 ) -> Result<()> {
     let stdout = std::io::stdout();
     let mut out = stdout.lock();
-    // Timeout koneksi serial di set 100ms di core, jadi poll keyboard cepat.
-    let _ = Instant::now();
 
     loop {
         // 1. Tampilkan output dari device.
@@ -296,6 +349,81 @@ fn run_loop(
                     let _ = tx_to_dev.send(text.into_bytes());
                 }
                 _ => {}
+            }
+        }
+    }
+}
+
+/// Mode pipa: baca baris dari stdin (tanpa raw mode).
+fn run_loop_pipe(
+    rx_from_dev: &Receiver<Vec<u8>>,
+    tx_to_dev: &Sender<Vec<u8>>,
+    log_file: &mut Option<std::fs::File>,
+) -> Result<()> {
+    use std::io::{BufRead, BufReader};
+
+    let (stdin_tx, stdin_rx) = mpsc::channel::<String>();
+    std::thread::spawn(move || {
+        let reader = BufReader::new(std::io::stdin());
+        for line in reader.lines() {
+            match line {
+                Ok(l) => {
+                    if stdin_tx.send(l).is_err() {
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+    });
+
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+
+    loop {
+        // Tampilkan output device.
+        let mut got = false;
+        loop {
+            match rx_from_dev.try_recv() {
+                Ok(data) => {
+                    let _ = out.write_all(&data);
+                    if let Some(f) = log_file.as_mut() {
+                        let _ = f.write_all(&data);
+                    }
+                    got = true;
+                }
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => {
+                    let _ = out.flush();
+                    return Ok(());
+                }
+            }
+        }
+        if got {
+            let _ = out.flush();
+        }
+
+        // Kirim baris dari stdin.
+        match stdin_rx.try_recv() {
+            Ok(line) => {
+                if line == "exit" || line == "quit" {
+                    // Beri jeda agar output terakhir sempat tertangkap.
+                    let drain = Instant::now() + Duration::from_millis(500);
+                    while Instant::now() < drain {
+                        if let Ok(data) = rx_from_dev.try_recv() {
+                            let _ = out.write_all(&data);
+                        }
+                        std::thread::sleep(Duration::from_millis(20));
+                    }
+                    let _ = out.flush();
+                    return Ok(());
+                }
+                let _ = tx_to_dev.send(format!("{line}\r\n").into_bytes());
+            }
+            Err(TryRecvError::Empty) => std::thread::sleep(Duration::from_millis(20)),
+            Err(TryRecvError::Disconnected) => {
+                // stdin habis; tetap tampilkan output sampai channel device tutup.
+                std::thread::sleep(Duration::from_millis(50));
             }
         }
     }

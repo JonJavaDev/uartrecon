@@ -127,8 +127,9 @@ fn run(cli: Cli) -> anyhow::Result<()> {
             baud,
             format,
             enter,
+            spam,
             log,
-        }) => commands::terminal(&port, baud, &format, &enter, log, color),
+        }) => commands::terminal(&port, baud, &format, &enter, spam, log, color),
         Some(Command::FlashLede {
             port,
             baud,
