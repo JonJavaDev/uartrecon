@@ -6,10 +6,12 @@
 
 Deteksi baudrate otomatis, capture, analisis firmware, sampai recovery — semua read-only.
 
+Dibuat dengan **Rust** 🦀 — cross-platform, cepat, tanpa runtime.
+
 [![CI](https://github.com/JonJavaDev/uartrecon/actions/workflows/ci.yml/badge.svg)](https://github.com/JonJavaDev/uartrecon/actions/workflows/ci.yml)
 [![Release](https://github.com/JonJavaDev/uartrecon/actions/workflows/release.yml/badge.svg)](https://github.com/JonJavaDev/uartrecon/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
+[![Rust](https://img.shields.io/badge/Built%20with-Rust-orange?logo=rust&logoColor=white)](https://www.rust-lang.org)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-informational.svg)](#install)
 
 [Install](#install) · [Pakai](#pakai) · [Screenshot](#screenshot) · [Fitur](#fitur) · [Docs](docs/)
@@ -168,6 +170,24 @@ crates/
 ```
 
 `uartrecon-core` nggak bergantung ke CLI/TUI/GUI — semua pakai engine yang sama.
+
+## Dibuat dengan Rust
+
+Seluruh proyek ini 100% Rust (edition 2024). Nggak ada runtime tambahan —
+hasilnya binary native tunggal yang cepat dan kecil.
+
+| Komponen | Crate |
+|----------|-------|
+| Serial I/O | [`serialport`](https://crates.io/crates/serialport) |
+| CLI | [`clap`](https://crates.io/crates/clap) |
+| TUI | [`ratatui`](https://crates.io/crates/ratatui) + [`crossterm`](https://crates.io/crates/crossterm) |
+| GUI | [`egui`](https://crates.io/crates/egui) + [`eframe`](https://crates.io/crates/eframe) |
+| Serialisasi | [`serde`](https://crates.io/crates/serde) + [`toml`](https://crates.io/crates/toml) |
+| Hashing | [`sha2`](https://crates.io/crates/sha2) |
+| Error handling | [`thiserror`](https://crates.io/crates/thiserror) + [`anyhow`](https://crates.io/crates/anyhow) |
+| Regex | [`regex`](https://crates.io/crates/regex) |
+
+**Build:** `cargo build --release` · **Test:** `cargo test --workspace`
 
 ## Kontribusi
 
