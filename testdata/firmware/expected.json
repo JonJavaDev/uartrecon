@@ -1,0 +1,8 @@
+{
+  "description": "Firmware demo sintetis: uImage header + U-Boot log + gzip + URL + SquashFS",
+  "size_bytes": 402,
+  "expected": {
+    "signatures": ["U-Boot uImage", "U-Boot", "SquashFS (LE)"],
+    "interesting_strings": ["http://admin:password123@192.168.1.1/setup.cgi", "/bin/busybox", "/etc/passwd"]
+  }
+}

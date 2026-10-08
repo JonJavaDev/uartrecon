@@ -1,0 +1,17 @@
+[package]
+name = "uartrecon-tui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "TUI untuk UARTRecon."
+
+[[bin]]
+name = "uartrecon-tui"
+path = "src/main.rs"
+
+[dependencies]
+uartrecon-core.workspace = true
+anyhow.workspace = true
+crossterm.workspace = true
+ratatui.workspace = true

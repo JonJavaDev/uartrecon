@@ -1,0 +1,6 @@
+name = "linux"
+description = "Generic Embedded Linux profile"
+bootloader_patterns = ["U-Boot", "Barebox"]
+os_patterns = ["Linux version", "/proc", "/sys", "/etc"]
+storage_patterns = ["NAND", "MMC", "SquashFS"]
+suggested_baudrates = [115200, 57600]

@@ -1,0 +1,11 @@
+{
+  "baudrate": 115200,
+  "format": "8N1",
+  "description": "STB dengan U-Boot + Linux + BusyBox + MTD partitions",
+  "expected": {
+    "bootloader": "U-Boot",
+    "os": "Embedded Linux",
+    "shell": "BusyBox",
+    "storage": "NAND"
+  }
+}

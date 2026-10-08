@@ -1,0 +1,21 @@
+[package]
+name = "uartrecon-gui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "GUI desktop untuk UARTRecon (egui/eframe)."
+
+[[bin]]
+name = "uartrecon-gui"
+path = "src/main.rs"
+
+[dependencies]
+uartrecon-core.workspace = true
+eframe.workspace = true
+egui.workspace = true
+egui_plot.workspace = true
+rfd.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true

@@ -1,0 +1,5 @@
+{
+  "baudrate": 115200,
+  "format": "8N1",
+  "description": "Sample U-Boot + Linux + BusyBox pada 115200 baud"
+}

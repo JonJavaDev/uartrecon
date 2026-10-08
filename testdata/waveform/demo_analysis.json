@@ -1,0 +1,685 @@
+{
+  "analysis": {
+    "baud": {
+      "baudrate": 115200,
+      "bit_period_secs": 8.680555555555178e-6,
+      "error_ratio": 4.3579954459952814e-14,
+      "raw_baud": 115200.00000000502
+    },
+    "decoded": {
+      "bytes": [
+        85,
+        45,
+        66,
+        111,
+        111,
+        116,
+        32,
+        50,
+        48,
+        50,
+        49,
+        46,
+        49,
+        48,
+        13,
+        10,
+        68,
+        82,
+        65,
+        77,
+        58,
+        32,
+        53,
+        49,
+        50,
+        32,
+        77,
+        105,
+        66,
+        13,
+        10,
+        78,
+        65,
+        78,
+        68,
+        58,
+        32,
+        50,
+        53,
+        54,
+        32,
+        77,
+        105,
+        66,
+        13,
+        10,
+        76,
+        105,
+        110,
+        117,
+        120,
+        32,
+        118,
+        101,
+        114,
+        115,
+        105,
+        111,
+        110,
+        32,
+        53,
+        46,
+        49,
+        48,
+        13,
+        10,
+        66,
+        117,
+        115,
+        121,
+        66,
+        111,
+        120,
+        13,
+        10,
+        108,
+        111,
+        103,
+        105,
+        110,
+        58,
+        32
+      ],
+      "error_count": 0,
+      "frames": [
+        {
+          "parity_ok": true,
+          "start_sample": 8,
+          "start_secs": 8.680555555555556e-6,
+          "stop_ok": true,
+          "value": 85
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 88,
+          "start_secs": 0.00009548611111111112,
+          "stop_ok": true,
+          "value": 45
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 168,
+          "start_secs": 0.00018229166666666667,
+          "stop_ok": true,
+          "value": 66
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 248,
+          "start_secs": 0.0002690972222222222,
+          "stop_ok": true,
+          "value": 111
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 328,
+          "start_secs": 0.0003559027777777778,
+          "stop_ok": true,
+          "value": 111
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 408,
+          "start_secs": 0.0004427083333333333,
+          "stop_ok": true,
+          "value": 116
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 488,
+          "start_secs": 0.0005295138888888889,
+          "stop_ok": true,
+          "value": 32
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 568,
+          "start_secs": 0.0006163194444444444,
+          "stop_ok": true,
+          "value": 50
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 648,
+          "start_secs": 0.000703125,
+          "stop_ok": true,
+          "value": 48
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 728,
+          "start_secs": 0.0007899305555555555,
+          "stop_ok": true,
+          "value": 50
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 808,
+          "start_secs": 0.0008767361111111111,
+          "stop_ok": true,
+          "value": 49
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 888,
+          "start_secs": 0.0009635416666666667,
+          "stop_ok": true,
+          "value": 46
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 968,
+          "start_secs": 0.0010503472222222223,
+          "stop_ok": true,
+          "value": 49
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 1048,
+          "start_secs": 0.0011371527777777777,
+          "stop_ok": true,
+          "value": 48
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 1128,
+          "start_secs": 0.0012239583333333334,
+          "stop_ok": true,
+          "value": 13
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 1208,
+          "start_secs": 0.0013107638888888889,
+          "stop_ok": true,
+          "value": 10
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 1288,
+          "start_secs": 0.0013975694444444443,
+          "stop_ok": true,
+          "value": 68
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 1368,
+          "start_secs": 0.001484375,
+          "stop_ok": true,
+          "value": 82
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 1448,
+          "start_secs": 0.0015711805555555555,
+          "stop_ok": true,
+          "value": 65
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 1528,
+          "start_secs": 0.0016579861111111112,
+          "stop_ok": true,
+          "value": 77
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 1608,
+          "start_secs": 0.0017447916666666666,
+          "stop_ok": true,
+          "value": 58
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 1688,
+          "start_secs": 0.0018315972222222223,
+          "stop_ok": true,
+          "value": 32
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 1768,
+          "start_secs": 0.0019184027777777778,
+          "stop_ok": true,
+          "value": 53
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 1848,
+          "start_secs": 0.0020052083333333332,
+          "stop_ok": true,
+          "value": 49
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 1928,
+          "start_secs": 0.002092013888888889,
+          "stop_ok": true,
+          "value": 50
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 2008,
+          "start_secs": 0.0021788194444444446,
+          "stop_ok": true,
+          "value": 32
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 2088,
+          "start_secs": 0.002265625,
+          "stop_ok": true,
+          "value": 77
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 2168,
+          "start_secs": 0.0023524305555555555,
+          "stop_ok": true,
+          "value": 105
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 2248,
+          "start_secs": 0.002439236111111111,
+          "stop_ok": true,
+          "value": 66
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 2328,
+          "start_secs": 0.0025260416666666665,
+          "stop_ok": true,
+          "value": 13
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 2408,
+          "start_secs": 0.002612847222222222,
+          "stop_ok": true,
+          "value": 10
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 2488,
+          "start_secs": 0.002699652777777778,
+          "stop_ok": true,
+          "value": 78
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 2568,
+          "start_secs": 0.0027864583333333335,
+          "stop_ok": true,
+          "value": 65
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 2648,
+          "start_secs": 0.0028732638888888887,
+          "stop_ok": true,
+          "value": 78
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 2728,
+          "start_secs": 0.0029600694444444444,
+          "stop_ok": true,
+          "value": 68
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 2808,
+          "start_secs": 0.003046875,
+          "stop_ok": true,
+          "value": 58
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 2888,
+          "start_secs": 0.0031336805555555554,
+          "stop_ok": true,
+          "value": 32
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 2968,
+          "start_secs": 0.003220486111111111,
+          "stop_ok": true,
+          "value": 50
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 3048,
+          "start_secs": 0.0033072916666666667,
+          "stop_ok": true,
+          "value": 53
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 3128,
+          "start_secs": 0.0033940972222222224,
+          "stop_ok": true,
+          "value": 54
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 3208,
+          "start_secs": 0.0034809027777777776,
+          "stop_ok": true,
+          "value": 32
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 3288,
+          "start_secs": 0.0035677083333333333,
+          "stop_ok": true,
+          "value": 77
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 3368,
+          "start_secs": 0.003654513888888889,
+          "stop_ok": true,
+          "value": 105
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 3448,
+          "start_secs": 0.0037413194444444442,
+          "stop_ok": true,
+          "value": 66
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 3528,
+          "start_secs": 0.003828125,
+          "stop_ok": true,
+          "value": 13
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 3608,
+          "start_secs": 0.003914930555555555,
+          "stop_ok": true,
+          "value": 10
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 3688,
+          "start_secs": 0.004001736111111111,
+          "stop_ok": true,
+          "value": 76
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 3768,
+          "start_secs": 0.0040885416666666665,
+          "stop_ok": true,
+          "value": 105
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 3848,
+          "start_secs": 0.004175347222222223,
+          "stop_ok": true,
+          "value": 110
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 3928,
+          "start_secs": 0.004262152777777778,
+          "stop_ok": true,
+          "value": 117
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 4008,
+          "start_secs": 0.004348958333333333,
+          "stop_ok": true,
+          "value": 120
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 4088,
+          "start_secs": 0.004435763888888889,
+          "stop_ok": true,
+          "value": 32
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 4168,
+          "start_secs": 0.0045225694444444445,
+          "stop_ok": true,
+          "value": 118
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 4248,
+          "start_secs": 0.004609375,
+          "stop_ok": true,
+          "value": 101
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 4328,
+          "start_secs": 0.004696180555555556,
+          "stop_ok": true,
+          "value": 114
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 4408,
+          "start_secs": 0.004782986111111111,
+          "stop_ok": true,
+          "value": 115
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 4488,
+          "start_secs": 0.004869791666666666,
+          "stop_ok": true,
+          "value": 105
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 4568,
+          "start_secs": 0.0049565972222222225,
+          "stop_ok": true,
+          "value": 111
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 4648,
+          "start_secs": 0.005043402777777778,
+          "stop_ok": true,
+          "value": 110
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 4728,
+          "start_secs": 0.005130208333333333,
+          "stop_ok": true,
+          "value": 32
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 4808,
+          "start_secs": 0.005217013888888889,
+          "stop_ok": true,
+          "value": 53
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 4888,
+          "start_secs": 0.005303819444444444,
+          "stop_ok": true,
+          "value": 46
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 4968,
+          "start_secs": 0.005390625,
+          "stop_ok": true,
+          "value": 49
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 5048,
+          "start_secs": 0.005477430555555556,
+          "stop_ok": true,
+          "value": 48
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 5128,
+          "start_secs": 0.005564236111111111,
+          "stop_ok": true,
+          "value": 13
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 5208,
+          "start_secs": 0.005651041666666667,
+          "stop_ok": true,
+          "value": 10
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 5288,
+          "start_secs": 0.005737847222222222,
+          "stop_ok": true,
+          "value": 66
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 5368,
+          "start_secs": 0.0058246527777777776,
+          "stop_ok": true,
+          "value": 117
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 5448,
+          "start_secs": 0.005911458333333334,
+          "stop_ok": true,
+          "value": 115
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 5528,
+          "start_secs": 0.005998263888888889,
+          "stop_ok": true,
+          "value": 121
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 5608,
+          "start_secs": 0.006085069444444444,
+          "stop_ok": true,
+          "value": 66
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 5688,
+          "start_secs": 0.006171875,
+          "stop_ok": true,
+          "value": 111
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 5768,
+          "start_secs": 0.0062586805555555555,
+          "stop_ok": true,
+          "value": 120
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 5848,
+          "start_secs": 0.006345486111111111,
+          "stop_ok": true,
+          "value": 13
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 5928,
+          "start_secs": 0.006432291666666667,
+          "stop_ok": true,
+          "value": 10
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 6008,
+          "start_secs": 0.006519097222222222,
+          "stop_ok": true,
+          "value": 108
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 6088,
+          "start_secs": 0.006605902777777777,
+          "stop_ok": true,
+          "value": 111
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 6168,
+          "start_secs": 0.0066927083333333335,
+          "stop_ok": true,
+          "value": 103
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 6248,
+          "start_secs": 0.006779513888888889,
+          "stop_ok": true,
+          "value": 105
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 6328,
+          "start_secs": 0.006866319444444445,
+          "stop_ok": true,
+          "value": 110
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 6408,
+          "start_secs": 0.006953125,
+          "stop_ok": true,
+          "value": 58
+        },
+        {
+          "parity_ok": true,
+          "start_sample": 6488,
+          "start_secs": 0.007039930555555555,
+          "stop_ok": true,
+          "value": 32
+        }
+      ]
+    },
+    "edge_count": 502,
+    "pulse": {
+      "count": 501,
+      "max_secs": 0.00005208333333333367,
+      "mean_secs": 0.000014190369261477056,
+      "median_secs": 8.680555555556045e-6,
+      "min_secs": 8.680555555555178e-6
+    }
+  },
+  "duration_ms": 7.135416666666667,
+  "format": "8N1",
+  "sample_rate": 921600,
+  "samples": 6576
+}

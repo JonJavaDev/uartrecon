@@ -1,0 +1,11 @@
+U-Boot 2021.10
+DRAM: 512 MiB
+NAND: 256 MiB
+Linux version 5.10.0
+BusyBox v1.35
+root@stb:~# cat /proc/mtd
+dev:    size   erasesize  name
+mtd0: 00040000 00020000 "bootloader"
+mtd1: 00300000 00020000 "kernel"
+mtd2: 02000000 00020000 "rootfs"
+mtd3: 01000000 00020000 "userdata"

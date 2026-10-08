@@ -1,0 +1,10 @@
+# Normalisasi line ending
+* text=auto eol=lf
+
+# File biner (raw capture) jangan diubah
+*.raw binary
+*.bin binary
+*.exe binary
+
+# Lock file tetap LF
+Cargo.lock text eol=lf

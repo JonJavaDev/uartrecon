@@ -1,0 +1,6 @@
+name = "uboot"
+description = "U-Boot bootloader profile"
+bootloader_patterns = ["U-Boot", "Das U-Boot", "Hit any key"]
+os_patterns = ["Linux version", "Starting kernel"]
+storage_patterns = ["NAND", "MMC", "NOR"]
+suggested_baudrates = [115200, 57600, 38400, 9600]

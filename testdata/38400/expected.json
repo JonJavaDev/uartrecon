@@ -1,0 +1,5 @@
+{
+  "baudrate": 38400,
+  "format": "8N1",
+  "description": "Sample generic boot log pada 38400 baud"
+}

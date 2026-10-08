@@ -1,0 +1,6 @@
+name = "stb"
+description = "Set-top box / receiver profile"
+bootloader_patterns = ["U-Boot", "CFE", "MStar"]
+os_patterns = ["Linux", "BusyBox", "Android"]
+storage_patterns = ["NAND", "MMC", "SquashFS"]
+suggested_baudrates = [115200, 57600, 38400]

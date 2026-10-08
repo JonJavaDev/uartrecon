@@ -1,0 +1,5 @@
+{
+  "baudrate": 57600,
+  "format": "8N1",
+  "description": "Sample CFE bootloader pada 57600 baud"
+}

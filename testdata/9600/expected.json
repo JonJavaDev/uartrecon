@@ -1,0 +1,5 @@
+{
+  "baudrate": 9600,
+  "format": "8N1",
+  "description": "Sample U-Boot bootlog pada 9600 baud"
+}

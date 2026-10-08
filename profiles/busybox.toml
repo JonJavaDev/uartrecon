@@ -1,0 +1,6 @@
+name = "busybox"
+description = "BusyBox shell profile"
+bootloader_patterns = []
+os_patterns = ["BusyBox", "login:"]
+storage_patterns = []
+suggested_baudrates = [115200, 57600, 38400]

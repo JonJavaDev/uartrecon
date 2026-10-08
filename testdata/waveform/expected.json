@@ -1,0 +1,11 @@
+{
+  "sample_rate": 921600,
+  "baudrate": 115200,
+  "format": "8N1",
+  "description": "Waveform UART sintetis: U-Boot + Linux + BusyBox pada 115200 8N1",
+  "expected": {
+    "bit_period_us": 8.681,
+    "baud_error_ratio_max": 0.02,
+    "decoded_bytes": 82
+  }
+}
