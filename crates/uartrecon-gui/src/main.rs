@@ -3,6 +3,7 @@
 //! GUI menggunakan `uartrecon-core` dan **tidak** menduplikasi logika.
 
 mod app;
+mod i18n;
 mod panels;
 mod waveform;
 
@@ -42,6 +43,9 @@ fn main() -> eframe::Result<()> {
         options,
         Box::new(|cc| {
             setup_theme(&cc.egui_ctx);
+            // Muat bahasa dari config.
+            let cfg = uartrecon_core::config::load();
+            i18n::set_lang(uartrecon_core::i18n::Lang::parse(&cfg.language));
             Ok(Box::new(App::default()))
         }),
     )
@@ -346,10 +350,25 @@ impl eframe::App for App {
                     }
                     if ui.button("Tentang").clicked() {
                         self.gui
-                            .log("UARTRecon v0.1.0 — UART Recon & Analysis Toolkit (MIT)");
+                            .log("UARTRecon v0.1.0 - UART Recon & Analysis Toolkit (MIT)");
                         self.gui
-                            .log("read-only first · detect · capture · analyze · export");
+                            .log("read-only first - detect - capture - analyze - export");
                         ui.close();
+                    }
+                });
+
+                // Menu bahasa.
+                ui.menu_button(i18n::t(uartrecon_core::i18n::Key::Language), |ui| {
+                    for l in uartrecon_core::i18n::Lang::ALL {
+                        if ui.selectable_label(i18n::lang() == *l, l.name()).clicked() {
+                            i18n::set_lang(*l);
+                            // Simpan ke config.
+                            let mut cfg = uartrecon_core::config::load();
+                            cfg.language = l.code().to_string();
+                            let _ = uartrecon_core::config::save(&cfg);
+                            self.gui.log(format!("Bahasa diganti ke {}.", l.name()));
+                            ui.close();
+                        }
                     }
                 });
 

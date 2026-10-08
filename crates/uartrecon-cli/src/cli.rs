@@ -2,7 +2,7 @@
 
 use clap::{Parser, Subcommand, ValueEnum};
 
-/// UARTRecon — toolkit reconnaissance UART read-only-first.
+/// UARTRecon - toolkit reconnaissance UART read-only-first.
 #[derive(Debug, Parser)]
 #[command(
     name = "uartrecon",
@@ -312,6 +312,13 @@ pub enum Command {
 
     /// Verifikasi environment (serial support, port).
     Doctor,
+
+    /// Ganti bahasa antarmuka (id / en).
+    Lang {
+        /// Kode bahasa: `id` (Indonesia) atau `en` (English). Kosong = tampilkan.
+        #[arg(default_value = "")]
+        code: String,
+    },
 
     /// Terminal interaktif real-time via UART (kirim & terima langsung).
     ///

@@ -283,7 +283,7 @@ pub fn required_backups() -> Vec<PartitionRule> {
 pub fn policy_summary() -> String {
     let mut out = String::new();
     out.push_str("SAFETY POLICY (read-only first)\n");
-    out.push_str("────────────────────────────────\n\n");
+    out.push_str("--------------------------------\n\n");
     out.push_str("Partisi yang DIBLOKIR untuk ditulis (hard-block):\n");
     for r in b700v5_rules() {
         if r.criticality.blocked_in_hard_mode() {
@@ -353,7 +353,7 @@ mod tests {
     #[test]
     fn nand_write_kernel_diblokir() {
         let v = analyze_device_command("nand write 0x80000000 0x500000 0x400000", true);
-        // Tidak ada target mtd eksplisit → hanya warn.
+        // Tidak ada target mtd eksplisit -> hanya warn.
         assert!(!v.is_blocked());
     }
 

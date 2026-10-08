@@ -59,7 +59,7 @@ pub fn human_size(bytes: u64) -> String {
 
 /// Menghitung MD5 dan mengembalikannya sebagai hex huruf kecil.
 ///
-/// Implementasi MD5 self-contained (RFC 1321) — dipakai untuk memverifikasi
+/// Implementasi MD5 self-contained (RFC 1321) - dipakai untuk memverifikasi
 /// backup terhadap `md5sum` di device (banyak device embedded hanya punya MD5).
 pub fn md5_hex(data: &[u8]) -> String {
     let digest = md5_digest(data);

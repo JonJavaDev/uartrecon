@@ -19,6 +19,7 @@ pub mod capture;
 pub mod config;
 pub mod detector;
 pub mod error;
+pub mod i18n;
 pub mod logic;
 pub mod output;
 pub mod profiles;

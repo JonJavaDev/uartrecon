@@ -3,8 +3,10 @@
 use egui::{Color32, RichText, Ui};
 
 use uartrecon_core::detector::fingerprint::Confidence;
+use uartrecon_core::i18n::Key;
 
 use crate::app::{ConnState, GuiApp, UiAction};
+use crate::i18n::t;
 
 /// Warna untuk tingkat kepercayaan.
 fn confidence_color(c: Confidence) -> Color32 {
@@ -166,19 +168,19 @@ pub fn terminal_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
             }
         }
         ui.separator();
-        if ui.button("Clear").clicked() {
+        if ui.button(t(Key::Clear)).clicked() {
             app.recorder = uartrecon_core::capture::Recorder::new();
             app.fingerprint = None;
             app.analysis = Default::default();
         }
-        if ui.button("Fingerprint").clicked() {
+        if ui.button(t(Key::Fingerprint)).clicked() {
             app.update_fingerprint();
         }
-        if ui.button("Analisis").clicked() {
+        if ui.button(t(Key::Analyze)).clicked() {
             app.analyze_buffer();
             app.tab = crate::app::Tab::Analysis;
         }
-        if ui.button("Bootlog").clicked() {
+        if ui.button(t(Key::Bootlog)).clicked() {
             app.capture_bootlog();
         }
         ui.separator();
@@ -251,10 +253,10 @@ pub fn terminal_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
     });
 
     ui.horizontal(|ui| {
-        ui.label("Command:");
+        ui.label(format!("{}:", t(Key::Command)));
         let resp = ui.add(
             egui::TextEdit::singleline(&mut app.command_input)
-                .hint_text("mis. cat /proc/mtd  (↑/↓ = riwayat)")
+                .hint_text("mis. cat /proc/mtd  (panah atas/bawah = riwayat)")
                 .desired_width(340.0),
         );
 
@@ -268,20 +270,37 @@ pub fn terminal_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
             }
         }
 
-        let send = ui.button("Send").clicked()
+        let send = ui.button(t(Key::Send)).clicked()
             || (resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)));
         if send && !app.command_input.trim().is_empty() {
             let cmd = std::mem::take(&mut app.command_input);
             app.push_history(&cmd);
             action = UiAction::Send(cmd);
         }
+
+        // Salin output (teks) ke clipboard.
         if ui
-            .button("Copy RX")
-            .on_hover_text("Salin output RX ke clipboard")
+            .button(t(Key::CopyOutput))
+            .on_hover_text("Salin semua output yang diterima dari device")
             .clicked()
         {
             ui.ctx().copy_text(text.clone());
-            app.show_toast("Output RX disalin ke clipboard.");
+            app.show_toast("Output disalin ke clipboard.");
+        }
+
+        // Simpan output ke file TXT.
+        if ui
+            .button(t(Key::SaveTxt))
+            .on_hover_text("Simpan output ke file .txt")
+            .clicked()
+            && let Some(path) = rfd::FileDialog::new()
+                .set_file_name("uartrecon-output.txt")
+                .save_file()
+        {
+            match std::fs::write(&path, &text) {
+                Ok(()) => app.show_toast("Output disimpan."),
+                Err(e) => app.log(format!("Gagal menyimpan: {e}")),
+            }
         }
     });
 
@@ -385,7 +404,7 @@ pub fn analysis_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
     let action = UiAction::None;
 
     ui.horizontal(|ui| {
-        if ui.button("🔍 Analisis buffer RX").clicked() {
+        if ui.button("Analisis buffer RX").clicked() {
             app.analyze_buffer();
         }
         if ui.button("Clear hasil").clicked() {
@@ -397,7 +416,7 @@ pub fn analysis_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
     ui.separator();
 
     // Sub-panel: search.
-    ui.collapsing("🔎 Search", |ui| {
+    ui.collapsing("Search", |ui| {
         ui.horizontal(|ui| {
             ui.label("Query:");
             ui.add(egui::TextEdit::singleline(&mut app.search.query).desired_width(200.0));
@@ -548,7 +567,7 @@ pub fn firmware_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
     let action = UiAction::None;
 
     ui.horizontal(|ui| {
-        if ui.button("📂 Buka file firmware").clicked()
+        if ui.button("Buka file firmware").clicked()
             && let Some(path) = rfd::FileDialog::new()
                 .add_filter("Semua file", &["*"])
                 .add_filter("Binary", &["bin", "img", "fw", "raw"])
@@ -556,7 +575,7 @@ pub fn firmware_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
         {
             app.load_firmware(&path);
         }
-        if ui.button("📄 Buka sesi sebagai firmware").clicked()
+        if ui.button("Buka sesi sebagai firmware").clicked()
             && let Some(dir) = rfd::FileDialog::new().pick_folder()
         {
             let rx = dir.join("rx.raw");
@@ -596,7 +615,7 @@ pub fn firmware_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
 
     // Ekspor data firmware ke file.
     ui.horizontal(|ui| {
-        if ui.button("💾 Ekspor raw").clicked()
+        if ui.button("Ekspor raw").clicked()
             && let Some(path) = rfd::FileDialog::new()
                 .set_file_name("firmware_export.bin")
                 .save_file()
@@ -606,7 +625,7 @@ pub fn firmware_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
                 Err(e) => app.error = Some(format!("export gagal: {e}")),
             }
         }
-        if ui.button("🔎 Analisis di tab Analysis").clicked() {
+        if ui.button("Analisis di tab Analysis").clicked() {
             // Salin data firmware ke buffer RX agar bisa dianalisis di tab Analysis.
             app.recorder = uartrecon_core::capture::Recorder::new();
             app.recorder.push_rx(&fw.data);
@@ -656,7 +675,7 @@ pub fn firmware_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
 
 /// Panel command suggestions (read-only, klik untuk isi command).
 pub fn suggestions_panel(ui: &mut Ui, app: &mut GuiApp) {
-    ui.collapsing("💡 Saran command (read-only)", |ui| {
+    ui.collapsing("Saran command (read-only)", |ui| {
         let cmds = crate::app::suggested_commands(app.fingerprint.as_ref());
         egui::ScrollArea::vertical()
             .id_salt("suggestions")

@@ -1,7 +1,7 @@
 //! Terminal interaktif real-time via UART.
 //!
 //! Menampilkan output device secara live dan meneruskan setiap tombol yang
-//! ditekan — seperti Tera Term / PuTTY, tapi di dalam UARTRecon.
+//! ditekan - seperti Tera Term / PuTTY, tapi di dalam UARTRecon.
 //!
 //! Tekan `Ctrl+]` untuk keluar (seperti Telnet).
 //!
@@ -61,7 +61,7 @@ pub fn terminal(
     ui::header("UART TERMINAL");
     ui::kv("Port", &format!("{port} @ {baud} {}", fmt.label()));
     ui::kv("Keluar", "Ctrl+]");
-    println!("\n(mode interaktif — ketik langsung, output device tampil live)\n");
+    println!("\n(mode interaktif - ketik langsung, output device tampil live)\n");
 
     let mut log_file = match &log_path {
         Some(p) => Some(std::fs::File::create(p).context("gagal membuat file log")?),

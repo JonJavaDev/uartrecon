@@ -1,9 +1,9 @@
 //! Fingerprinting perangkat: bootloader, OS, shell, vendor/SoC.
 //!
 //! Setiap hasil memiliki kategori kepercayaan:
-//! - [`Confidence::Detected`] — bukti kuat (pola khas + konteks).
-//! - [`Confidence::Probable`] — ada indikasi tapi tidak konklusif.
-//! - [`Confidence::Unknown`] — tidak ada bukti.
+//! - [`Confidence::Detected`] - bukti kuat (pola khas + konteks).
+//! - [`Confidence::Probable`] - ada indikasi tapi tidak konklusif.
+//! - [`Confidence::Unknown`] - tidak ada bukti.
 //!
 //! **Penting:** kita tidak mengklaim SoC hanya berdasarkan satu string.
 //! Setiap pola memiliki bobot, dan total bobot menentukan kategori.

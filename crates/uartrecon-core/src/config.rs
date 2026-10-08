@@ -35,6 +35,13 @@ pub struct Config {
     pub color: bool,
     /// Jumlah hasil maksimum untuk pencarian.
     pub max_search_results: usize,
+    /// Bahasa antarmuka ("id" atau "en").
+    #[serde(default = "default_lang")]
+    pub language: String,
+}
+
+fn default_lang() -> String {
+    "id".to_string()
 }
 
 impl Default for Config {
@@ -53,6 +60,7 @@ impl Default for Config {
             entropy_block_size: 1024,
             color: true,
             max_search_results: 1000,
+            language: default_lang(),
         }
     }
 }

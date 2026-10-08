@@ -17,7 +17,7 @@ pub fn render_report(
 ) -> String {
     let mut out = String::new();
     out.push_str("RECON REPORT\n");
-    out.push_str("────────────────────────\n\n");
+    out.push_str("------------------------\n\n");
 
     out.push_str("UART\n");
     out.push_str(&format!("  {}\n\n", config.label()));

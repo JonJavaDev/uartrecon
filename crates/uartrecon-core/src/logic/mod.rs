@@ -4,7 +4,7 @@
 //! mode ini bekerja pada **sampel digital** dari pin RX yang direkam oleh
 //! logic analyzer / capture digital. Dari sini kita bisa:
 //!
-//! 1. Deteksi edge (transisi 0→1 atau 1→0).
+//! 1. Deteksi edge (transisi 0->1 atau 1->0).
 //! 2. Ukur lebar pulsa untuk memperkirakan **bit period**.
 //! 3. Hitung **baudrate** fisik dari bit period.
 //! 4. Decode frame UART (start bit, data, parity, stop) menjadi byte.
@@ -232,7 +232,7 @@ impl Default for DecodeOptions {
 /// Men-decode UART dari waveform pada baudrate & format tertentu.
 ///
 /// Algoritma:
-/// 1. Cari transisi high→low (kandidat start bit).
+/// 1. Cari transisi high->low (kandidat start bit).
 /// 2. Verifikasi start bit dengan sampling di tengah bit.
 /// 3. Sampling data bit (LSB dulu), parity, dan stop bit.
 /// 4. Lanjut ke frame berikutnya setelah stop bit.
@@ -346,7 +346,7 @@ pub fn decode(wave: &Waveform, opts: &DecodeOptions) -> Result<DecodeResult> {
     })
 }
 
-/// Pipeline lengkap: deteksi edge → statistik pulsa → estimasi baud → decode.
+/// Pipeline lengkap: deteksi edge -> statistik pulsa -> estimasi baud -> decode.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AnalysisResult {
     /// Jumlah edge.

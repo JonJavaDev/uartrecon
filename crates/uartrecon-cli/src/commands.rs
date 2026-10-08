@@ -71,7 +71,7 @@ pub fn interactive_menu(_color: bool) -> Result<()> {
 
     loop {
         ui::header("MENU UTAMA");
-        println!("  ── Koneksi & Capture ──");
+        println!("  -- Koneksi & Capture --");
         println!("  [1] Daftar serial port");
         println!("  [2] Scan baudrate & format (auto-detect)");
         println!("  [3] Monitor data");
@@ -79,17 +79,18 @@ pub fn interactive_menu(_color: bool) -> Result<()> {
         println!("  [5] Analisis file capture / sesi");
         println!("  [6] Logic analyzer (waveform)");
         println!("  [m] TERMINAL interaktif (real-time, seperti PuTTY)");
-        println!("  ── Analisis Lanjutan ──");
+        println!("  -- Analisis Lanjutan --");
         println!("  [s] Search pola (literal/regex/hex)");
         println!("  [t] Strings (ekstraksi teks)");
         println!("  [e] Entropy (deteksi compressed/encrypted)");
         println!("  [g] Signatures (scan firmware binwalk-like)");
         println!("  [x] Stats (histogram byte)");
         println!("  [d] Diff (bandingkan dua capture)");
-        println!("  ── Lainnya ──");
+        println!("  -- Lainnya --");
         println!("  [7] Lihat sesi tersimpan");
         println!("  [8] Doctor (cek environment)");
         println!("  [c] Konfigurasi");
+        println!("  [l] Ganti bahasa (ID/EN)");
         println!("  [f] Flash LEDE/OpenWrt ke rootfs (workflow)");
         println!("  [q] Keluar");
         print!("\nPilih: ");
@@ -193,6 +194,10 @@ pub fn interactive_menu(_color: bool) -> Result<()> {
             }
             "c" | "C" => {
                 config(false, false, false, true)?;
+            }
+            "l" | "L" => {
+                let code = prompt("Bahasa (id/en)", "id")?;
+                lang(&code, true)?;
             }
             "f" | "F" => {
                 if let Some(port) = pick_port()? {
@@ -1522,4 +1527,26 @@ pub fn flash_lede(
         }
         other => bail!("action '{other}' tidak dikenal (plan|check|run)"),
     }
+}
+
+/// `lang`: lihat/ganti bahasa antarmuka.
+pub fn lang(code: &str, _color: bool) -> Result<()> {
+    use uartrecon_core::i18n::Lang;
+    let mut cfg = core_config::load();
+    if code.trim().is_empty() {
+        ui::header("LANGUAGE");
+        ui::kv(
+            "Aktif",
+            &format!("{} ({})", Lang::parse(&cfg.language).name(), cfg.language),
+        );
+        println!("\nPilihan: id (Indonesia), en (English)");
+        println!("Ganti dengan: uartrecon lang en");
+        return Ok(());
+    }
+    let l = Lang::parse(code);
+    cfg.language = l.code().to_string();
+    let written = core_config::save(&cfg)?;
+    println!("Bahasa diganti ke {} ({})", l.name(), l.code());
+    println!("Config: {}", written.display());
+    Ok(())
 }

@@ -30,7 +30,7 @@ pub const SD_MOUNT_CANDIDATES: &[&str] = &[
 
 /// Membuat script backup partisi kritis ke SD card.
 ///
-/// Script ini **read-only terhadap flash** — hanya `dd if=/dev/mtdN` (baca) dan
+/// Script ini **read-only terhadap flash** - hanya `dd if=/dev/mtdN` (baca) dan
 /// tulis ke SD. Aman dijalankan.
 pub fn backup_script(parts: &[safety::PartitionRule], out_subdir: &str) -> String {
     let mut s = String::new();
@@ -87,7 +87,7 @@ pub fn backup_script(parts: &[safety::PartitionRule], out_subdir: &str) -> Strin
 
 /// Membuat script restore dari SD card ke partisi.
 ///
-/// **BERBAHAYA** — script ini menulis ke flash. Wajib dikonfirmasi user.
+/// **BERBAHAYA** - script ini menulis ke flash. Wajib dikonfirmasi user.
 pub fn restore_script(parts: &[safety::PartitionRule], in_subdir: &str) -> String {
     let mut s = String::new();
     s.push_str("#!/bin/sh\n");
@@ -118,7 +118,7 @@ pub fn restore_script(parts: &[safety::PartitionRule], in_subdir: &str) -> Strin
         // Bootloader (Critical) tidak pernah masuk restore otomatis.
         if p.criticality == Criticality::Critical {
             s.push_str(&format!(
-                "# SKIP mtd{mtd} ({}): CRITICAL — bootloader TIDAK boleh ditulis otomatis.\n\n",
+                "# SKIP mtd{mtd} ({}): CRITICAL - bootloader TIDAK boleh ditulis otomatis.\n\n",
                 p.name
             ));
             continue;

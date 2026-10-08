@@ -137,5 +137,6 @@ fn run(cli: Cli) -> anyhow::Result<()> {
             action,
         }) => commands::flash_lede(&action, &port, baud, &image, target_mtd, color),
         Some(Command::Doctor) => commands::doctor(color),
+        Some(Command::Lang { code }) => commands::lang(&code, color),
     }
 }
