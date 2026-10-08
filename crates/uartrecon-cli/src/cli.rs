@@ -253,8 +253,110 @@ pub enum Command {
         json: bool,
     },
 
+    /// Kebijakan keamanan: partisi kritis & command yang diblokir.
+    Safety {
+        /// Periksa satu command (apakah aman dikirim ke device).
+        #[arg(long)]
+        check: Option<String>,
+        /// Mode keras: blokir tulis ke partisi Critical + High.
+        #[arg(long, default_value_t = true)]
+        hard: bool,
+        /// Output JSON.
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Backup partisi kritis dari device via UART (hexdump -> file + verifikasi MD5).
+    Backup {
+        /// Nama port (mis. COM3).
+        #[arg(long)]
+        port: String,
+        /// Baudrate.
+        #[arg(long, default_value_t = 115200)]
+        baud: u32,
+        /// Partisi yang dibackup (nama, mis. `boot`). Bisa diulang.
+        #[arg(long = "part", value_delimiter = ',')]
+        parts: Vec<String>,
+        /// Backup SEMUA partisi kritis (boot/env/kernel/rootfs).
+        #[arg(long)]
+        critical: bool,
+        /// Direktori output.
+        #[arg(long, default_value = "backups")]
+        out: String,
+        /// Nama device (untuk manifest).
+        #[arg(long, default_value = "device")]
+        device: String,
+    },
+
+    /// Recovery: backup/restore partisi kritis via SD card (UART hanya kirim perintah).
+    Recover {
+        /// Subcommand: `plan` | `run` | `restore`.
+        #[arg(default_value = "plan")]
+        action: String,
+        /// Nama port (mis. COM3) untuk `run`/`restore`.
+        #[arg(long)]
+        port: Option<String>,
+        /// Baudrate.
+        #[arg(long, default_value_t = 115200)]
+        baud: u32,
+        /// Nama device.
+        #[arg(long, default_value = "B700V5S1")]
+        device: String,
+        /// Subdirektori backup di SD card.
+        #[arg(long, default_value = "uartrecon_backup")]
+        subdir: String,
+        /// Tulis script ke direktori ini (untuk `plan`).
+        #[arg(long)]
+        out: Option<String>,
+    },
+
     /// Verifikasi environment (serial support, port).
     Doctor,
+
+    /// Terminal interaktif real-time via UART (kirim & terima langsung).
+    ///
+    /// Berbeda dari `connect` (yang mengirim per-baris), `terminal` menampilkan
+    /// output device secara live dan meneruskan setiap tombol yang Anda tekan.
+    /// Cocok untuk masuk shell device (BusyBox/LEDE), lihat bootlog, atau
+    /// berinteraksi seperti di Tera Term/PuTTY.
+    Terminal {
+        /// Nama port (mis. COM3).
+        port: String,
+        /// Baudrate.
+        #[arg(long, default_value_t = 115_200)]
+        baud: u32,
+        /// Format (mis. 8N1).
+        #[arg(long, default_value = "8N1")]
+        format: String,
+        /// Kirim line-ending CR (default CR, cocok untuk BusyBox/Linux).
+        #[arg(long, default_value = "cr")]
+        enter: String,
+        /// Simpan seluruh sesi ke file (raw).
+        #[arg(long)]
+        log: Option<String>,
+    },
+
+    /// Flash LEDE/OpenWrt ke partisi rootfs STB (workflow otomatis).
+    ///
+    /// Mengikuti metode yang terbukti: boot ke slot lain, timpa rootfs dorman,
+    /// copy OS, JANGAN buat /init (kernel fallback ke /sbin/init).
+    FlashLede {
+        /// Nama port (mis. COM3).
+        #[arg(long)]
+        port: String,
+        /// Baudrate.
+        #[arg(long, default_value_t = 115200)]
+        baud: u32,
+        /// File squashfs OS (di SD card device) atau path lokal untuk instruksi.
+        #[arg(long)]
+        image: String,
+        /// Partisi target (mtd6 = norm, mtd9 = safe).
+        #[arg(long, default_value_t = 6)]
+        target_mtd: u32,
+        /// Subcommand: `plan` (tampilkan langkah) | `check` (preflight) | `run` (jalankan).
+        #[arg(default_value = "plan")]
+        action: String,
+    },
 }
 
 /// Parsing string `"115200 8N1"` menjadi baudrate + format.

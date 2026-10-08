@@ -62,6 +62,27 @@ impl App {
             UiAction::Send(text) => self.send(text),
             UiAction::SaveSession(name) => self.save_session(name),
             UiAction::LoadSession(path) => self.load_session(path),
+            UiAction::Export(fmt) => self.export(fmt),
+        }
+    }
+
+    /// Ekspor buffer RX ke format tertentu (pilih folder via dialog).
+    fn export(&mut self, fmt: app::ExportFormat) {
+        let dir = rfd::FileDialog::new().pick_folder();
+        let Some(dir) = dir else {
+            return;
+        };
+        match self.gui.export_buffer(fmt, &dir) {
+            Ok(path) => {
+                self.gui
+                    .log(format!("Export {} -> {}", fmt.label(), path.display()));
+                self.gui
+                    .show_toast(format!("Export {} berhasil.", fmt.label()));
+            }
+            Err(e) => {
+                self.gui.error = Some(format!("export gagal: {e}"));
+                self.gui.log(format!("Export gagal: {e}"));
+            }
         }
     }
 
@@ -266,28 +287,48 @@ impl eframe::App for App {
                 if let Some(err) = &self.gui.error {
                     ui.colored_label(egui::Color32::from_rgb(220, 100, 100), format!("⚠ {err}"));
                 }
+                if let Some(toast) = self.gui.active_toast() {
+                    ui.separator();
+                    ui.colored_label(egui::Color32::from_rgb(80, 200, 120), format!("✓ {toast}"));
+                }
             });
             panels::log_panel(ui, &self.gui);
         });
 
-        // Panel samping: kontrol + info.
+        // Panel samping: kontrol + info + suggestions.
         egui::Panel::left("side")
             .resizable(true)
-            .default_size(280.0)
+            .default_size(300.0)
             .show(ui, |ui| {
-                let a = panels::control_panel(ui, &mut self.gui);
-                if !matches!(a, UiAction::None) {
-                    pending = a;
-                }
-                ui.separator();
-                ui.horizontal(|ui| {
-                    ui.label("Sesi:");
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.gui.session_name).desired_width(140.0),
-                    );
-                    if ui.button("Simpan").clicked() {
-                        pending = UiAction::SaveSession(self.gui.session_name.clone());
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    let a = panels::control_panel(ui, &mut self.gui);
+                    if !matches!(a, UiAction::None) {
+                        pending = a;
                     }
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        ui.label("Sesi:");
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.gui.session_name)
+                                .desired_width(140.0),
+                        );
+                        if ui.button("Simpan").clicked() {
+                            pending = UiAction::SaveSession(self.gui.session_name.clone());
+                        }
+                    });
+
+                    ui.separator();
+                    ui.heading("Export");
+                    ui.horizontal_wrapped(|ui| {
+                        for fmt in app::ExportFormat::ALL {
+                            if ui.button(fmt.label()).clicked() {
+                                pending = UiAction::Export(*fmt);
+                            }
+                        }
+                    });
+
+                    ui.separator();
+                    panels::suggestions_panel(ui, &mut self.gui);
                 });
             });
 
@@ -296,6 +337,8 @@ impl eframe::App for App {
             let a = match self.gui.tab {
                 Tab::Terminal => panels::terminal_tab(ui, &mut self.gui),
                 Tab::Detection => panels::detection_tab(ui, &mut self.gui),
+                Tab::Analysis => panels::analysis_tab(ui, &mut self.gui),
+                Tab::Firmware => panels::firmware_tab(ui, &mut self.gui),
                 Tab::Waveform => waveform::waveform_tab(ui, &mut self.gui),
                 Tab::Sessions => panels::sessions_tab(ui, &mut self.gui),
             };

@@ -62,10 +62,10 @@ pub fn print_help() {
 
 /// Menu interaktif: dipanggil saat `uartrecon` dijalankan tanpa argumen.
 ///
-/// Alur: tampilkan daftar port → pilih → pilih aksi. Cukup `cargo run` saja.
+/// Alur: tampilkan daftar port -> pilih -> pilih aksi. Cukup `cargo run` saja.
 pub fn interactive_menu(_color: bool) -> Result<()> {
     ui::banner();
-    println!("(mode menu — tekan Ctrl+C kapan saja untuk keluar)\n");
+    println!("(mode menu - tekan Ctrl+C kapan saja untuk keluar)\n");
 
     let stdin = std::io::stdin();
 
@@ -78,6 +78,7 @@ pub fn interactive_menu(_color: bool) -> Result<()> {
         println!("  [4] Mode interaktif (kirim command)");
         println!("  [5] Analisis file capture / sesi");
         println!("  [6] Logic analyzer (waveform)");
+        println!("  [m] TERMINAL interaktif (real-time, seperti PuTTY)");
         println!("  ── Analisis Lanjutan ──");
         println!("  [s] Search pola (literal/regex/hex)");
         println!("  [t] Strings (ekstraksi teks)");
@@ -89,6 +90,7 @@ pub fn interactive_menu(_color: bool) -> Result<()> {
         println!("  [7] Lihat sesi tersimpan");
         println!("  [8] Doctor (cek environment)");
         println!("  [c] Konfigurasi");
+        println!("  [f] Flash LEDE/OpenWrt ke rootfs (workflow)");
         println!("  [q] Keluar");
         print!("\nPilih: ");
         std::io::stdout().flush()?;
@@ -132,6 +134,13 @@ pub fn interactive_menu(_color: bool) -> Result<()> {
             }
             "6" => {
                 logic(None, 921_600, "8N1", true, false, true)?;
+            }
+            "m" | "M" => {
+                if let Some(port) = pick_port()? {
+                    let (baud, fmt) = prompt_config()?;
+                    let enter = prompt("Line-ending Enter (cr/lf/crlf)", "cr")?;
+                    terminal(&port, baud, &fmt, &enter, None, true)?;
+                }
             }
             "s" | "S" => {
                 let file = prompt("Path file/sesi", "")?;
@@ -184,6 +193,22 @@ pub fn interactive_menu(_color: bool) -> Result<()> {
             }
             "c" | "C" => {
                 config(false, false, false, true)?;
+            }
+            "f" | "F" => {
+                if let Some(port) = pick_port()? {
+                    let image = prompt(
+                        "Path image di device (mis. /var/mntt/usba1/xxx.squashfs)",
+                        "",
+                    )?;
+                    let mtd = prompt("Target mtd (6=norm, 9=safe)", "6")?;
+                    let target: u32 = mtd.parse().unwrap_or(6);
+                    flash_lede("plan", &port, 115200, &image, target, true)?;
+                    println!();
+                    let act = prompt("Jalankan? (check/run/kosong=batal)", "")?;
+                    if !act.trim().is_empty() {
+                        flash_lede(&act, &port, 115200, &image, target, true)?;
+                    }
+                }
             }
             "q" | "Q" | "exit" | "quit" => break,
             other => {
@@ -1021,4 +1046,480 @@ pub fn config(path: bool, init: bool, json: bool, _color: bool) -> Result<()> {
     ui::kv("Entropy block", &cfg.entropy_block_size.to_string());
     ui::kv("Color", &cfg.color.to_string());
     Ok(())
+}
+
+/// `safety`: kebijakan keamanan & cek command.
+pub fn safety(check: Option<String>, hard: bool, json: bool, _color: bool) -> Result<()> {
+    if let Some(cmd) = check {
+        let verdict = uartrecon_core::safety::analyze_device_command(&cmd, hard);
+        if json {
+            println!("{}", serde_json::to_string_pretty(&verdict)?);
+            return Ok(());
+        }
+        ui::header("SAFETY CHECK");
+        ui::kv("Command", &cmd);
+        ui::kv("Hard mode", &hard.to_string());
+        match &verdict {
+            uartrecon_core::safety::SafetyVerdict::Allow => {
+                println!("\n   ALLOW - command aman (read-only).");
+            }
+            uartrecon_core::safety::SafetyVerdict::Warn { message } => {
+                println!("\n    WARN - {message}");
+            }
+            uartrecon_core::safety::SafetyVerdict::Block { message, .. } => {
+                println!("\n   BLOCKED - {message}");
+            }
+        }
+        return Ok(());
+    }
+
+    if json {
+        let rules = uartrecon_core::safety::b700v5_rules();
+        println!("{}", serde_json::to_string_pretty(&rules)?);
+        return Ok(());
+    }
+
+    println!("{}", uartrecon_core::safety::policy_summary());
+    println!("\nGunakan `uartrecon safety --check \"<command>\"` untuk menguji sebuah command.");
+    Ok(())
+}
+
+/// `backup`: backup partisi kritis dari device via UART.
+pub fn backup(
+    port: &str,
+    baud: u32,
+    parts: Vec<String>,
+    critical: bool,
+    out: &str,
+    device: &str,
+    _color: bool,
+) -> Result<()> {
+    use uartrecon_core::capture::backup::{BackupEntry, BackupManifest, parse_hexdump_c};
+    use uartrecon_core::safety;
+
+    let config = SerialConfig::new(baud, SerialFormat::EIGHT_N_ONE);
+
+    // Tentukan partisi target.
+    let targets: Vec<safety::PartitionRule> = if critical {
+        safety::required_backups()
+    } else if parts.is_empty() {
+        // Default: bootloader + env (paling penting).
+        vec![
+            safety::rule_for_name("boot").unwrap(),
+            safety::rule_for_name("env").unwrap(),
+        ]
+    } else {
+        parts
+            .iter()
+            .filter_map(|p| {
+                let p = p.trim();
+                // Terima nama atau "mtdN".
+                if let Some(num) = p.strip_prefix("mtd").and_then(|n| n.parse::<u32>().ok()) {
+                    safety::rule_for_mtd(num)
+                } else {
+                    safety::rule_for_name(p)
+                }
+            })
+            .collect()
+    };
+
+    if targets.is_empty() {
+        bail!("tidak ada partisi target valid");
+    }
+
+    ui::header("BACKUP (via UART)");
+    ui::kv("Port", &format!("{port} @ {baud}"));
+    ui::kv("Output", out);
+    println!("\nTarget:");
+    for t in &targets {
+        println!(
+            "  mtd{:<2} {:<10} [{}]  {}",
+            t.mtd.map(|m| m.to_string()).unwrap_or_else(|| "?".into()),
+            t.name,
+            t.criticality.label(),
+            t.reason
+        );
+    }
+    println!();
+
+    let mut manifest = BackupManifest::new(device);
+
+    for t in &targets {
+        let Some(mtd) = t.mtd else { continue };
+
+        // 1. Ambil MD5 dari device (read-only).
+        println!("[*] {} (mtd{mtd}): mengambil md5...", t.name);
+        let md5_out = run_device_cmd(port, config, &format!("md5sum /dev/mtd{mtd}"), 6000)?;
+        let md5_device = parse_md5(&md5_out);
+        if let Some(m) = &md5_device {
+            println!("    md5 device: {m}");
+        } else {
+            println!("    [!] md5 tidak terbaca, lanjut tanpa verifikasi");
+        }
+
+        // 2. Ambil hexdump (read-only). Untuk partisi besar ini lambat.
+        //    Gunakan `-Cv` agar TIDAK ada kompresi bintang ("*") yang
+        //    menyebabkan kehilangan data.
+        println!("    [*] mengambil hexdump (bisa lama untuk partisi besar)...");
+        let dump_out =
+            run_device_cmd(port, config, &format!("hexdump -Cv /dev/mtd{mtd}"), 600_000)?;
+        let data = parse_hexdump_c(&dump_out)?;
+
+        // 3. Simpan + verifikasi.
+        std::fs::create_dir_all(out)?;
+        let bin_path = Path::new(out).join(format!("mtd{mtd}_{}.bin", t.name));
+        std::fs::write(&bin_path, &data)?;
+
+        let entry = BackupEntry::new(&t.name, Some(mtd), &data, md5_device);
+        let status = if entry.verified {
+            "VERIFIED "
+        } else {
+            "unverified "
+        };
+        println!(
+            "    [{}] {} bytes -> {} ({})",
+            status,
+            entry.size,
+            bin_path.display(),
+            &entry.md5_host[..8]
+        );
+        manifest.add(entry);
+    }
+
+    // Simpan manifest.
+    let manifest_path = Path::new(out).join(format!("manifest_{}.json", device));
+    std::fs::write(&manifest_path, manifest.to_json()?)?;
+
+    ui::header("BACKUP SELESAI");
+    ui::kv("Manifest", &manifest_path.display().to_string());
+    ui::kv(
+        "Verified",
+        &format!(
+            "{}/{}",
+            manifest.entries.iter().filter(|e| e.verified).count(),
+            manifest.entries.len()
+        ),
+    );
+    Ok(())
+}
+
+/// Mengirim satu command ke device via UART dan mengembalikan output.
+fn run_device_cmd(port: &str, config: SerialConfig, cmd: &str, wait_ms: u64) -> Result<String> {
+    let mut conn = Connection::open(port, config).context("gagal membuka port")?;
+    let _ = conn.clear_input();
+    std::thread::sleep(Duration::from_millis(150));
+    conn.write(format!("{cmd}\r\n").as_bytes())?;
+
+    let deadline = std::time::Instant::now() + Duration::from_millis(wait_ms);
+    let mut out = Vec::new();
+    let mut buf = [0u8; 4096];
+    while std::time::Instant::now() < deadline {
+        match conn.read(&mut buf) {
+            Ok(0) => std::thread::sleep(Duration::from_millis(20)),
+            Ok(n) => out.extend_from_slice(&buf[..n]),
+            Err(_) => break,
+        }
+        // Berhenti lebih awal bila sudah ada prompt '#' setelah data.
+        if out.len() > 64 && out.windows(2).rev().take(32).any(|w| w == b"# ") {
+            // beri sedikit waktu lalu hentikan
+            std::thread::sleep(Duration::from_millis(100));
+            break;
+        }
+    }
+    let _ = conn.close();
+    Ok(String::from_utf8_lossy(&out).to_string())
+}
+
+/// Mengekstrak MD5 (32 hex) dari output `md5sum`.
+fn parse_md5(text: &str) -> Option<String> {
+    for tok in text.split_whitespace() {
+        if tok.len() == 32 && tok.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Some(tok.to_ascii_lowercase());
+        }
+    }
+    None
+}
+
+/// `recover`: backup/restore partisi kritis via SD card.
+pub fn recover(
+    action: &str,
+    port: Option<String>,
+    baud: u32,
+    device: &str,
+    subdir: &str,
+    out: Option<String>,
+    _color: bool,
+) -> Result<()> {
+    use uartrecon_core::recovery::RecoveryPlan;
+
+    let plan = RecoveryPlan::new(device, subdir);
+
+    match action {
+        "plan" => {
+            ui::header("RECOVERY PLAN");
+            print!("{}", plan.summary());
+
+            if let Some(dir) = out {
+                std::fs::create_dir_all(&dir)?;
+                let backup_path = Path::new(&dir).join("backup.sh");
+                let restore_path = Path::new(&dir).join("restore.sh");
+                std::fs::write(&backup_path, &plan.backup_script)?;
+                std::fs::write(&restore_path, &plan.restore_script)?;
+                println!("\n[+] Script ditulis:");
+                println!("    {}", backup_path.display());
+                println!("    {}", restore_path.display());
+            } else {
+                ui::header("BACKUP SCRIPT (read-only terhadap flash)");
+                println!("{}", plan.backup_script);
+                ui::header("RESTORE SCRIPT (MENULIS ke flash - berbahaya)");
+                println!("{}", plan.restore_script);
+            }
+        }
+        "run" => {
+            let port = port.ok_or_else(|| anyhow::anyhow!("--port wajib untuk 'run'"))?;
+            let config = SerialConfig::new(baud, SerialFormat::EIGHT_N_ONE);
+            ui::header("BACKUP VIA SD CARD");
+            ui::kv("Port", &format!("{port} @ {baud}"));
+            ui::kv("SD subdir", subdir);
+
+            // Cek SD card ter-mount dulu.
+            let check = run_device_cmd(&port, config, "mount | grep usb", 3000)?;
+            if !check.contains("usb") {
+                bail!("SD card tidak ter-mount di device. Colok SD card lalu ulangi.");
+            }
+
+            // Kirim script baris per baris (UART hanya untuk perintah, bukan data).
+            println!("\n[*] Menjalankan backup di device (data langsung ke SD card)...");
+            for line in plan.backup_script.lines() {
+                let line = line.trim();
+                if line.is_empty() || line.starts_with('#') || line == "set -e" {
+                    continue;
+                }
+                // Kirim tiap baris sebagai perintah shell.
+                let out = run_device_cmd(&port, config, line, 8000)?;
+                if !out.trim().is_empty() && (line.contains("echo") || line.contains("dd")) {
+                    // Tampilkan progres ringkas.
+                }
+            }
+
+            // Verifikasi hasil.
+            let listing = run_device_cmd(
+                &port,
+                config,
+                &format!("ls -la /var/mntt/usba1/{subdir}/"),
+                5000,
+            )?;
+            println!("\n[+] Isi SD card:");
+            println!("{listing}");
+            println!("[+] Backup selesai. Cabut SD card & colok ke PC.");
+        }
+        "restore" => {
+            let port = port.ok_or_else(|| anyhow::anyhow!("--port wajib untuk 'restore'"))?;
+            let config = SerialConfig::new(baud, SerialFormat::EIGHT_N_ONE);
+
+            ui::header("  RESTORE - MENULIS KE FLASH");
+            println!(
+                "Ini akan MENULIS ke partisi. Bootloader (mtd1) TIDAK pernah ditulis otomatis."
+            );
+            println!("Partisi yang akan direstore:");
+            for p in &plan.parts {
+                if p.criticality != uartrecon_core::safety::Criticality::Critical {
+                    println!("  mtd{:?} {}", p.mtd, p.name);
+                }
+            }
+            print!("\nKetik 'RESTORE' untuk melanjutkan: ");
+            std::io::stdout().flush()?;
+            let mut ans = String::new();
+            std::io::stdin().read_line(&mut ans)?;
+            if ans.trim() != "RESTORE" {
+                println!("Dibatalkan.");
+                return Ok(());
+            }
+
+            for line in plan.restore_script.lines() {
+                let line = line.trim();
+                if line.is_empty()
+                    || line.starts_with('#')
+                    || line.starts_with("read ")
+                    || line.contains("Ketik")
+                {
+                    continue;
+                }
+                let _ = run_device_cmd(&port, config, line, 15000)?;
+            }
+            println!("[+] Restore dikirim. Reboot device untuk menerapkan.");
+        }
+        other => bail!("action '{other}' tidak dikenal (plan|run|restore)"),
+    }
+    Ok(())
+}
+
+/// `terminal`: terminal interaktif real-time via UART.
+pub fn terminal(
+    port: &str,
+    baud: u32,
+    format: &str,
+    enter: &str,
+    log: Option<String>,
+    color: bool,
+) -> Result<()> {
+    crate::terminal::terminal(port, baud, format, enter, log, color)
+}
+
+/// `flash-lede`: workflow flash LEDE/OpenWrt ke rootfs STB.
+///
+/// Berdasarkan metode yang TERBUKTI berhasil pada ZTE B700V5:
+/// boot ke slot lain, timpa rootfs dorman, copy OS, dan **JANGAN buat /init**
+/// (kernel Linux otomatis fallback ke /sbin/init).
+pub fn flash_lede(
+    action: &str,
+    port: &str,
+    baud: u32,
+    image: &str,
+    target_mtd: u32,
+    _color: bool,
+) -> Result<()> {
+    use uartrecon_core::safety;
+
+    let config = SerialConfig::new(baud, SerialFormat::EIGHT_N_ONE);
+
+    // Validasi target partisi (harus rootfs, jangan bootloader).
+    let rule = safety::rule_for_mtd(target_mtd);
+    let part_name = rule.as_ref().map(|r| r.name.clone()).unwrap_or_default();
+    if rule.is_none() {
+        bail!("mtd{target_mtd} tidak dikenal");
+    }
+    if part_name.starts_with("boot") || part_name == "env" {
+        bail!(
+            "DIBLOKIR: mtd{target_mtd} ({part_name}) adalah partisi kritis. Pilih rootfs (mtd6/mtd9)."
+        );
+    }
+    if !part_name.starts_with("rootfs") {
+        bail!("Diharapkan partisi rootfs, tapi mtd{target_mtd} = '{part_name}'");
+    }
+
+    // Partisi pasangan (slot lain) untuk boot.
+    let other_slot = if target_mtd == 6 { 9 } else { 6 };
+    let other_name = safety::rule_for_mtd(other_slot)
+        .map(|r| r.name)
+        .unwrap_or_default();
+    let boot_other = if other_slot == 9 { "safe" } else { "norm" };
+    let boot_target = if target_mtd == 6 { "norm" } else { "safe" };
+
+    ui::header("FLASH LEDE - WORKFLOW");
+    ui::kv("Port", &format!("{port} @ {baud}"));
+    ui::kv("Image", image);
+    ui::kv("Target", &format!("mtd{target_mtd} ({part_name})"));
+    ui::kv(
+        "Boot dari slot",
+        &format!("mtd{other_slot} ({other_name}) -> {boot_other}"),
+    );
+
+    // Langkah-langkah (dengan pelajaran penting).
+    let steps = vec![
+        format!("1. Boot ke slot LAIN ({boot_other}) - jangan sentuh slot yang dipakai"),
+        format!("2. mount -t jffs2 /dev/mtdblock{target_mtd} /mtd{target_mtd}"),
+        format!("3. mount -t squashfs {image} /test"),
+        format!("4. rm -rf /mtd{target_mtd}/*        # hapus ISI, bukan folder"),
+        format!("5. cp -rp /test/* /mtd{target_mtd}  # PAKAI /*"),
+        format!("6. mkdir -p /mtd{target_mtd}/boot && cp /boot/sbin /mtd{target_mtd}/boot/sbin"),
+        "7. [PENTING] JANGAN buat /init! (kernel fallback ke /sbin/init)".to_string(),
+        "8. Buat /etc/rc.local anti-watchdog: echo 0 > /proc/net/monitor".to_string(),
+        "9. sync; umount /test /mtdX".to_string(),
+        format!("10. Reboot -> U-Boot -> ketik '{boot_target}'"),
+    ];
+
+    match action {
+        "plan" => {
+            println!("\nLANGKAH:");
+            for s in &steps {
+                println!("  {s}");
+            }
+            println!("\n[!] PELAJARAN KUNCI:");
+            println!("   JANGAN buat /init -> busybox. Kernel akan panic:");
+            println!("   'init: applet not found' -> 'Attempted to kill init!'");
+            println!("   LEDE pakai procd (/sbin/init). Kernel fallback otomatis.");
+            println!("\nGunakan `flash-lede ... run` untuk eksekusi (butuh konfirmasi).");
+            Ok(())
+        }
+        "check" => {
+            println!("[*] Preflight check...");
+            let mount = run_device_cmd(port, config, "mount | grep -E 'sd|usb'", 4000)?;
+            if mount.contains("usb") {
+                println!("  [OK] SD card ter-mount");
+            } else {
+                println!("  [!!] SD card TIDAK ter-mount");
+            }
+            let mode = run_device_cmd(
+                port,
+                config,
+                "cat /proc/cmdline | grep -o 'system=[a-z]*'",
+                4000,
+            )?;
+            println!("  Mode aktif: {}", mode.trim());
+            let img = run_device_cmd(port, config, &format!("ls -la {image} 2>&1"), 4000)?;
+            if img.contains("No such") {
+                println!("  [!!] Image tidak ditemukan: {image}");
+            } else {
+                println!("  [OK] Image ada: {}", img.trim());
+            }
+            let crit = run_device_cmd(
+                port,
+                config,
+                &format!("md5sum /dev/mtd{}", other_slot),
+                20000,
+            )?;
+            println!("  Slot penyelamat (mtd{other_slot}): {}", crit.trim());
+            Ok(())
+        }
+        "run" => {
+            ui::header("!!  KONFIRMASI");
+            println!("Ini akan MENIMPA mtd{target_mtd} ({part_name}) dengan LEDE.");
+            println!("Slot penyelamat: mtd{other_slot} ({other_name}) - TIDAK disentuh.");
+            println!("\nPastikan:");
+            println!("  - Anda sudah backup (uartrecon recover run)");
+            println!("  - Boot dari slot {boot_other}");
+            print!("\nKetik 'FLASH' untuk melanjutkan: ");
+            std::io::stdout().flush()?;
+            let mut ans = String::new();
+            std::io::stdin().read_line(&mut ans)?;
+            if ans.trim() != "FLASH" {
+                println!("Dibatalkan.");
+                return Ok(());
+            }
+
+            println!("\n[*] Menjalankan workflow flash...");
+            let cmds = vec![
+                format!("mkdir -p /mtd{target_mtd} /test"),
+                format!("mount -t jffs2 /dev/mtdblock{target_mtd} /mtd{target_mtd}"),
+                format!("mount -t squashfs {image} /test"),
+                format!("rm -rf /mtd{target_mtd}/*"),
+                format!("cp -rp /test/* /mtd{target_mtd}"),
+                format!(
+                    "mkdir -p /mtd{target_mtd}/boot && cp /boot/sbin /mtd{target_mtd}/boot/sbin"
+                ),
+                format!(
+                    "printf '#!/bin/sh\\nif [ -f /proc/net/monitor ]; then echo 0 > /proc/net/monitor; fi\\nexit 0\\n' > /mtd{target_mtd}/etc/rc.local && chmod +x /mtd{target_mtd}/etc/rc.local"
+                ),
+                "sync".to_string(),
+                "umount /test".to_string(),
+                format!("umount /mtd{target_mtd}"),
+            ];
+            for (i, c) in cmds.iter().enumerate() {
+                println!("  [{}/{}] {}", i + 1, cmds.len(), c);
+                let out = run_device_cmd(port, config, c, 30000)?;
+                let clean: String = out
+                    .chars()
+                    .filter(|ch| !ch.is_control() || *ch == '\n')
+                    .collect();
+                if !clean.trim().is_empty() {
+                    println!("      {}", clean.trim().lines().last().unwrap_or(""));
+                }
+            }
+            println!("\n[+] Selesai. Reboot & di U-Boot ketik: {boot_target}");
+            println!("    Kalau gagal -> U-Boot ketik: {boot_other} (recovery)");
+            Ok(())
+        }
+        other => bail!("action '{other}' tidak dikenal (plan|check|run)"),
+    }
 }

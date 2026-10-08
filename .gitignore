@@ -30,3 +30,7 @@ desktop.ini
 *.bin
 !testdata/**/*.raw
 !testdata/**/*.bin
+
+# Backup partisi device (data asli, besar, sensitif - JANGAN commit)
+/backups/*
+!/backups/.gitkeep

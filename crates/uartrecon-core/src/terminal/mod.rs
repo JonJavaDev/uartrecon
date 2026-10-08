@@ -3,5 +3,5 @@
 pub mod commands;
 pub mod console;
 
-pub use commands::{Command, CommandRisk, classify_risk};
+pub use commands::{Command, CommandRisk, RiskAssessment, classify_risk, classify_risk_detailed};
 pub use console::{ConsoleBuffer, OutputMode};

@@ -22,11 +22,15 @@ pub mod error;
 pub mod logic;
 pub mod output;
 pub mod profiles;
+pub mod recovery;
+pub mod safety;
 pub mod serial;
 pub mod terminal;
 pub mod util;
 
 pub use config::Config;
 pub use error::{Error, Result};
+pub use recovery::RecoveryPlan;
+pub use safety::{Criticality, PartitionRule, SafetyVerdict};
 pub use serial::config::{ParityCfg, SerialConfig};
 pub use serial::ports::{PortKind, SerialPortInfo, list_ports};

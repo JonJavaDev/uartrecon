@@ -208,6 +208,46 @@ pub fn classify_risk(input: &str) -> CommandRisk {
     CommandRisk::ReadOnly
 }
 
+/// Hasil klasifikasi risiko yang lebih kaya (dengan pesan & target partisi).
+#[derive(Debug, Clone, PartialEq)]
+pub struct RiskAssessment {
+    /// Tingkat risiko.
+    pub risk: CommandRisk,
+    /// Pesan penjelasan.
+    pub message: Option<String>,
+    /// Nama partisi yang jadi target (bila ada).
+    pub partition: Option<String>,
+}
+
+/// Klasifikasi risiko tingkat lanjut dengan analisis partisi kritis.
+///
+/// Bila `hard_mode = true`, menulis ke partisi kritis (bootloader/env/kernel/
+/// rootfs) akan diblokir dengan pesan spesifik.
+pub fn classify_risk_detailed(input: &str, hard_mode: bool) -> RiskAssessment {
+    // Pertama, cek analisis partisi kritis (lebih informatif).
+    match crate::safety::analyze_device_command(input, hard_mode) {
+        crate::safety::SafetyVerdict::Block { message, partition } => RiskAssessment {
+            risk: CommandRisk::Destructive,
+            message: Some(message),
+            partition: Some(partition),
+        },
+        crate::safety::SafetyVerdict::Warn { message } => {
+            // Tetap pakai klasifikasi umum untuk menentukan level.
+            let base = classify_risk(input);
+            RiskAssessment {
+                risk: base,
+                message: Some(message),
+                partition: None,
+            }
+        }
+        crate::safety::SafetyVerdict::Allow => RiskAssessment {
+            risk: classify_risk(input),
+            message: None,
+            partition: None,
+        },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -36,6 +36,12 @@ reconnaissance perangkat embedded melalui UART (USB-to-TTL).
 - **Diff**: bandingkan dua capture (teks & biner)
 - **Search**: literal / regex / hex / case-insensitive
 
+**Interaksi & Recovery**
+- **Terminal interaktif** real-time via UART (seperti PuTTY, dengan `Ctrl+]` keluar)
+- **Safety policy**: klasifikasi partisi kritis + hard-block command destruktif
+- **Backup & recovery** partisi kritis via SD card (UART hanya kirim perintah)
+- **Flash LEDE/OpenWrt** ke STB (workflow otomatis + pelajaran anti-brick)
+
 **Interfaces**
 - CLI dengan **menu interaktif** (cukup `cargo run`)
 - TUI (ratatui) dengan panel terminal & waveform
@@ -265,6 +271,15 @@ cargo run -- diff --left sessions/a --right sessions/b --text
 
 # Lihat sesi tersimpan (tanpa capture ulang)
 cargo run -- session stb01
+
+# Terminal interaktif real-time (seperti PuTTY/Tera Term, di dalam UARTRecon)
+cargo run -- terminal COM3 --baud 115200
+cargo run -- terminal COM3 --log session.log   # simpan sesi
+
+# Flash LEDE/OpenWrt ke STB (workflow otomatis, dengan safety)
+cargo run -- flash-lede --port COM3 --image /var/mntt/usba1/openwrt.squashfs plan
+cargo run -- flash-lede --port COM3 --image ... check   # preflight
+cargo run -- flash-lede --port COM3 --image ... run     # eksekusi (konfirmasi)
 
 # Konfigurasi
 cargo run -- config

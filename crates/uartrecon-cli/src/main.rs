@@ -2,6 +2,7 @@
 
 mod cli;
 mod commands;
+mod terminal;
 mod ui;
 
 use clap::Parser;
@@ -104,6 +105,37 @@ fn run(cli: Cli) -> anyhow::Result<()> {
             json,
         }) => commands::diff(&left, &right, text, json, color),
         Some(Command::Config { path, init, json }) => commands::config(path, init, json, color),
+        Some(Command::Safety { check, hard, json }) => commands::safety(check, hard, json, color),
+        Some(Command::Backup {
+            port,
+            baud,
+            parts,
+            critical,
+            out,
+            device,
+        }) => commands::backup(&port, baud, parts, critical, &out, &device, color),
+        Some(Command::Recover {
+            action,
+            port,
+            baud,
+            device,
+            subdir,
+            out,
+        }) => commands::recover(&action, port, baud, &device, &subdir, out, color),
+        Some(Command::Terminal {
+            port,
+            baud,
+            format,
+            enter,
+            log,
+        }) => commands::terminal(&port, baud, &format, &enter, log, color),
+        Some(Command::FlashLede {
+            port,
+            baud,
+            image,
+            target_mtd,
+            action,
+        }) => commands::flash_lede(&action, &port, baud, &image, target_mtd, color),
         Some(Command::Doctor) => commands::doctor(color),
     }
 }

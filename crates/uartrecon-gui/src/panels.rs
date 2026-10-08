@@ -165,10 +165,21 @@ pub fn terminal_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
                 app.mode = mode;
             }
         }
+        ui.separator();
         if ui.button("Clear").clicked() {
             app.recorder = uartrecon_core::capture::Recorder::new();
             app.fingerprint = None;
+            app.analysis = Default::default();
         }
+        if ui.button("Fingerprint").clicked() {
+            app.update_fingerprint();
+        }
+        if ui.button("Analisis").clicked() {
+            app.analyze_buffer();
+            app.tab = crate::app::Tab::Analysis;
+        }
+        ui.separator();
+        ui.label(format!("{} bytes", app.recorder.rx().len()));
     });
     ui.separator();
 
@@ -187,7 +198,7 @@ pub fn terminal_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
     egui::ScrollArea::vertical()
         .stick_to_bottom(true)
         .auto_shrink([false, false])
-        .max_height(ui.available_height() - 40.0)
+        .max_height(ui.available_height() - 80.0)
         .show(ui, |ui| {
             ui.add(
                 egui::TextEdit::multiline(&mut text.as_str())
@@ -198,17 +209,52 @@ pub fn terminal_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
         });
 
     ui.separator();
+
+    // Quick commands (klik untuk mengisi input).
+    ui.horizontal_wrapped(|ui| {
+        ui.label("Quick:");
+        for cmd in [
+            "",
+            "help",
+            "uname -a",
+            "cat /proc/mtd",
+            "cat /proc/meminfo",
+            "ls /dev",
+            "ps",
+        ] {
+            if cmd.is_empty() {
+                continue;
+            }
+            if ui.small_button(cmd).clicked() {
+                app.command_input = cmd.to_string();
+            }
+        }
+    });
+
     ui.horizontal(|ui| {
         ui.label("Command:");
         let resp = ui.add(
             egui::TextEdit::singleline(&mut app.command_input)
-                .hint_text("mis. cat /proc/mtd")
-                .desired_width(300.0),
+                .hint_text("mis. cat /proc/mtd  (↑/↓ = riwayat)")
+                .desired_width(320.0),
         );
+
+        // Navigasi riwayat dengan panah.
+        if resp.has_focus() {
+            if ui.input(|i| i.key_pressed(egui::Key::ArrowUp)) {
+                app.history_prev();
+            }
+            if ui.input(|i| i.key_pressed(egui::Key::ArrowDown)) {
+                app.history_next();
+            }
+        }
+
         let send = ui.button("Send").clicked()
             || (resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)));
         if send && !app.command_input.trim().is_empty() {
-            action = UiAction::Send(std::mem::take(&mut app.command_input));
+            let cmd = std::mem::take(&mut app.command_input);
+            app.push_history(&cmd);
+            action = UiAction::Send(cmd);
         }
     });
 
@@ -305,4 +351,314 @@ pub fn log_panel(ui: &mut Ui, app: &GuiApp) {
                 ui.monospace(line);
             }
         });
+}
+
+/// Tab Analysis: analisis buffer RX (strings/entropy/signatures/stats/search).
+pub fn analysis_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
+    let action = UiAction::None;
+
+    ui.horizontal(|ui| {
+        if ui.button("🔍 Analisis buffer RX").clicked() {
+            app.analyze_buffer();
+        }
+        if ui.button("Clear hasil").clicked() {
+            app.analysis = Default::default();
+        }
+        ui.separator();
+        ui.label(format!("RX: {} bytes", app.recorder.rx().len()));
+    });
+    ui.separator();
+
+    // Sub-panel: search.
+    ui.collapsing("🔎 Search", |ui| {
+        ui.horizontal(|ui| {
+            ui.label("Query:");
+            ui.add(egui::TextEdit::singleline(&mut app.search.query).desired_width(200.0));
+            ui.label("Mode:");
+            egui::ComboBox::from_id_salt("search_mode")
+                .selected_text(app.search.mode.clone())
+                .show_ui(ui, |ui| {
+                    for m in ["literal", "icase", "regex", "hex"] {
+                        ui.selectable_value(&mut app.search.mode, m.to_string(), m);
+                    }
+                });
+            if ui.button("Cari").clicked() {
+                app.run_search();
+            }
+        });
+        if let Some(err) = &app.search.error {
+            ui.colored_label(Color32::from_rgb(220, 100, 100), err);
+        }
+        if !app.search.results.is_empty() {
+            ui.label(format!("{} hasil:", app.search.results.len()));
+            egui::ScrollArea::vertical()
+                .id_salt("search_results")
+                .max_height(120.0)
+                .show(ui, |ui| {
+                    for m in &app.search.results {
+                        ui.monospace(format!("0x{:08X}  {}", m.offset, m.snippet));
+                    }
+                });
+        }
+    });
+
+    let Some(cache) = analysis_cache_or_empty(app) else {
+        ui.label("Belum ada hasil. Klik 'Analisis buffer RX'.");
+        return action;
+    };
+
+    ui.label(
+        RichText::new(format!("Sumber: {}", cache.source))
+            .italics()
+            .color(Color32::GRAY),
+    );
+
+    // Tabs internal hasil.
+    ui.horizontal(|ui| {
+        for (label, sel) in [
+            ("Stats", AnalysisSection::Stats),
+            ("Entropy", AnalysisSection::Entropy),
+            ("Signatures", AnalysisSection::Signatures),
+            ("Strings", AnalysisSection::Strings),
+            ("Interesting", AnalysisSection::Interesting),
+        ] {
+            if ui
+                .selectable_label(app.analysis_section == sel, label)
+                .clicked()
+            {
+                app.analysis_section = sel;
+            }
+        }
+    });
+    ui.separator();
+
+    egui::ScrollArea::vertical()
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            render_analysis_section(ui, &cache);
+        });
+
+    action
+}
+
+/// Bagian hasil analisis yang ditampilkan.
+pub use crate::app::AnalysisSection;
+
+/// Mengambil cache analisis (clone) bila ada isinya.
+fn analysis_cache_or_empty(app: &GuiApp) -> Option<crate::app::AnalysisCache> {
+    if app.analysis.stats.is_some() {
+        Some(app.analysis.clone())
+    } else {
+        None
+    }
+}
+
+/// Merender satu bagian analisis.
+fn render_analysis_section(ui: &mut Ui, cache: &crate::app::AnalysisCache) {
+    match cache {
+        _ if cache.stats.is_none() => {
+            ui.label("Tidak ada data.");
+        }
+        _ => {
+            // Render semua bagian secara berurutan (cukup ringkas).
+            if let Some(s) = &cache.stats {
+                ui.heading("Statistik");
+                egui::Grid::new("stats_grid").num_columns(2).show(ui, |ui| {
+                    ui.label("Total");
+                    ui.label(s.total.to_string());
+                    ui.end_row();
+                    ui.label("Unique");
+                    ui.label(s.unique_bytes.to_string());
+                    ui.end_row();
+                    ui.label("Printable");
+                    ui.label(format!("{:.1}%", s.printable_ratio() * 100.0));
+                    ui.end_row();
+                    if let Some((b, c)) = s.most_common {
+                        ui.label("Most common");
+                        ui.label(format!("0x{b:02X} ({c}x)"));
+                        ui.end_row();
+                    }
+                });
+                ui.separator();
+            }
+            if let Some(e) = &cache.entropy {
+                ui.heading("Entropy");
+                ui.label(format!("{:.4} bit/byte — {}", e.overall, e.class.label()));
+                ui.separator();
+            }
+            if let Some(sigs) = &cache.signatures {
+                ui.heading(format!("Signatures ({})", sigs.len()));
+                for s in sigs.iter().take(50) {
+                    ui.monospace(format!(
+                        "0x{:08X}  [{}] {}{}",
+                        s.offset,
+                        s.category,
+                        s.name,
+                        if s.weak { " (weak)" } else { "" }
+                    ));
+                }
+                ui.separator();
+            }
+            if let Some(strs) = &cache.strings {
+                ui.heading(format!("Strings ({})", strs.len()));
+                for s in strs.iter().take(100) {
+                    ui.monospace(format!("0x{:08X}  {}", s.offset, s.value));
+                }
+                ui.separator();
+            }
+            if let Some(int) = &cache.interesting {
+                ui.heading(format!("Interesting ({})", int.len()));
+                for (s, desc) in int.iter().take(50) {
+                    ui.monospace(format!("0x{:08X}  [{}] {}", s.offset, desc, s.value));
+                }
+            }
+        }
+    }
+}
+
+/// Tab Firmware: muat file + analisis.
+pub fn firmware_tab(ui: &mut Ui, app: &mut GuiApp) -> UiAction {
+    let action = UiAction::None;
+
+    ui.horizontal(|ui| {
+        if ui.button("📂 Buka file firmware").clicked()
+            && let Some(path) = rfd::FileDialog::new()
+                .add_filter("Semua file", &["*"])
+                .add_filter("Binary", &["bin", "img", "fw", "raw"])
+                .pick_file()
+        {
+            app.load_firmware(&path);
+        }
+        if ui.button("📄 Buka sesi sebagai firmware").clicked()
+            && let Some(dir) = rfd::FileDialog::new().pick_folder()
+        {
+            let rx = dir.join("rx.raw");
+            if rx.exists() {
+                app.load_firmware(&rx);
+            } else {
+                app.error = Some("rx.raw tidak ditemukan di folder sesi.".to_string());
+            }
+        }
+    });
+    ui.separator();
+
+    let Some(fw) = app.firmware.clone() else {
+        ui.label("Belum ada firmware dimuat. Klik 'Buka file firmware'.");
+        ui.add_space(8.0);
+        ui.label(
+            RichText::new(
+                "Fitur: signature scanner (binwalk-like), entropy, strings, stats, search.",
+            )
+            .italics()
+            .color(Color32::GRAY),
+        );
+        return action;
+    };
+
+    egui::Grid::new("fw_grid").num_columns(2).show(ui, |ui| {
+        ui.label("File");
+        ui.label(RichText::new(&fw.path).strong());
+        ui.end_row();
+        ui.label("Size");
+        ui.label(uartrecon_core::util::human_size(fw.size as u64));
+        ui.end_row();
+        ui.label("SHA-256");
+        ui.monospace(&fw.sha256);
+        ui.end_row();
+    });
+
+    // Ekspor data firmware ke file.
+    ui.horizontal(|ui| {
+        if ui.button("💾 Ekspor raw").clicked()
+            && let Some(path) = rfd::FileDialog::new()
+                .set_file_name("firmware_export.bin")
+                .save_file()
+        {
+            match std::fs::write(&path, &fw.data) {
+                Ok(()) => app.log(format!("Firmware diekspor ke {}", path.display())),
+                Err(e) => app.error = Some(format!("export gagal: {e}")),
+            }
+        }
+        if ui.button("🔎 Analisis di tab Analysis").clicked() {
+            // Salin data firmware ke buffer RX agar bisa dianalisis di tab Analysis.
+            app.recorder = uartrecon_core::capture::Recorder::new();
+            app.recorder.push_rx(&fw.data);
+            app.analyze_buffer();
+            app.tab = crate::app::Tab::Analysis;
+        }
+    });
+    ui.separator();
+
+    if let Some(sigs) = &fw.analysis.signatures {
+        ui.heading(format!("Signatures ({})", sigs.len()));
+        egui::ScrollArea::vertical()
+            .id_salt("fw_sigs")
+            .max_height(200.0)
+            .show(ui, |ui| {
+                for s in sigs {
+                    ui.monospace(format!(
+                        "0x{:08X}  [{}] {}{}",
+                        s.offset,
+                        s.category,
+                        s.name,
+                        if s.weak { " (weak)" } else { "" }
+                    ));
+                }
+            });
+    }
+    if let Some(e) = &fw.analysis.entropy {
+        ui.separator();
+        ui.heading("Entropy");
+        ui.label(format!("{:.4} bit/byte — {}", e.overall, e.class.label()));
+    }
+    if let Some(int) = &fw.analysis.interesting {
+        ui.separator();
+        ui.heading(format!("Interesting strings ({})", int.len()));
+        egui::ScrollArea::vertical()
+            .id_salt("fw_interesting")
+            .max_height(200.0)
+            .show(ui, |ui| {
+                for (s, desc) in int {
+                    ui.monospace(format!("0x{:08X}  [{}] {}", s.offset, desc, s.value));
+                }
+            });
+    }
+
+    action
+}
+
+/// Panel command suggestions (read-only, klik untuk isi command).
+pub fn suggestions_panel(ui: &mut Ui, app: &mut GuiApp) {
+    ui.collapsing("💡 Saran command (read-only)", |ui| {
+        let cmds = crate::app::suggested_commands(app.fingerprint.as_ref());
+        egui::ScrollArea::vertical()
+            .id_salt("suggestions")
+            .max_height(200.0)
+            .show(ui, |ui| {
+                let mut last_cat = "";
+                for (cat, cmd, desc) in cmds {
+                    if cat != last_cat {
+                        ui.label(
+                            RichText::new(cat)
+                                .strong()
+                                .color(Color32::from_rgb(120, 180, 255)),
+                        );
+                        last_cat = cat;
+                    }
+                    let resp = ui
+                        .add(
+                            egui::Button::new(
+                                RichText::new(cmd)
+                                    .monospace()
+                                    .color(Color32::from_rgb(80, 200, 120)),
+                            )
+                            .fill(Color32::from_rgb(30, 35, 45)),
+                        )
+                        .on_hover_text(desc);
+                    if resp.clicked() {
+                        app.command_input = cmd.to_string();
+                    }
+                }
+            });
+    });
 }
