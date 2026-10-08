@@ -46,7 +46,7 @@ crossterm = "0.29"
 ratatui = "0.29"
 
 # GUI
-eframe = { version = "0.36", default-features = false, features = ["glow", "default_fonts"] }
+eframe = { version = "0.36", default-features = false, features = ["glow", "default_fonts", "x11", "wayland"] }
 egui = "0.36"
 egui_plot = "0.37"
 rfd = "0.17"

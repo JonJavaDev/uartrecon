@@ -56,26 +56,18 @@ jobs:
       - name: Test
         run: cargo test --workspace --verbose
 
-  # ---- Build release artifacts (smoke test) ----
+  # ---- Build release (native saja; GUI pakai winit yang tidak cross-compile) ----
   build-release:
-    name: Build release (${{ matrix.target }})
+    name: Build release (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-          - os: macos-latest
-            target: x86_64-apple-darwin
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
       - name: Install Linux deps
@@ -84,4 +76,4 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev libxkbcommon-dev libwayland-dev
       - name: Build release
-        run: cargo build --release --workspace --target ${{ matrix.target }}
+        run: cargo build --release --workspace
