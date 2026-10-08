@@ -79,6 +79,139 @@ pub fn terminal(
     result
 }
 
+/// Opsi untuk mode U-Boot.
+pub struct UbootOptions {
+    /// Kirim `reboot` dulu.
+    pub reboot: bool,
+    /// Lama spam Enter (detik).
+    pub spam_secs: u64,
+    /// Auto-kirim command setelah prompt ketangkap (non-interaktif).
+    pub send_cmd: Option<String>,
+    /// Simpan output ke file.
+    pub log_path: Option<String>,
+}
+
+/// Mode U-Boot: auto-spam Enter untuk menghentikan autoboot, lalu interaktif.
+///
+/// Cocok untuk device yang autoboot-nya cepat (bootdelay=0) sehingga sulit
+/// ditangkap manual. Setelah prompt U-Boot terdeteksi, user bisa langsung
+/// mengetik command (`norm`, `safe`, `printenv`, ...).
+///
+/// Kalau `send_cmd` diisi, command itu otomatis dikirim setelah prompt
+/// terdeteksi (mode non-interaktif, cocok untuk skrip).
+pub fn uboot(port: &str, baud: u32, format: &str, opts: UbootOptions) -> Result<()> {
+    let UbootOptions {
+        reboot,
+        spam_secs,
+        send_cmd,
+        log_path,
+    } = opts;
+    let fmt = SerialFormat::parse(format).context("format tidak valid")?;
+    let config = SerialConfig::new(baud, fmt);
+
+    let mut conn = Connection::open(port, config).context("gagal membuka port")?;
+    let _ = conn.clear_input();
+
+    ui::header("U-BOOT MODE");
+    ui::kv("Port", &format!("{port} @ {baud} {}", fmt.label()));
+    if send_cmd.is_none() {
+        ui::kv("Keluar", "Ctrl+]");
+    }
+
+    // Opsional: kirim reboot dulu (kalau sudah di shell device).
+    if reboot {
+        println!("\n[*] Mengirim 'reboot' ke device...");
+        let _ = conn.write(b"\r\n");
+        std::thread::sleep(Duration::from_millis(300));
+        let _ = conn.write(b"reboot\r\n");
+    }
+
+    println!("\n[*] Spam ENTER maksimal {spam_secs} detik untuk menghentikan autoboot...");
+    println!("    (kalau STB baru dinyalakan, colok power sekarang)\n");
+
+    // Fase 1: spam Enter sampai prompt U-Boot terdeteksi atau timeout.
+    let deadline = Instant::now() + Duration::from_secs(spam_secs);
+    let mut detected = false;
+    let mut spam_count: u64 = 0;
+
+    while Instant::now() < deadline && !detected {
+        // Kirim Enter.
+        let _ = conn.write(b"\r\n");
+        spam_count += 1;
+
+        // Baca apa pun yang masuk.
+        if let Ok(data) = conn.read_for(Duration::from_millis(60))
+            && !data.is_empty()
+        {
+            let text = String::from_utf8_lossy(&data);
+            print!("{text}");
+            let _ = std::io::stdout().flush();
+            // Deteksi prompt U-Boot (berbagai varian).
+            if text.contains("STB-BOOT #")
+                || text.contains("U-Boot #")
+                || text.contains("=>")
+                || (text.contains("#") && text.contains("U-Boot"))
+            {
+                detected = true;
+            }
+        }
+    }
+
+    println!();
+    if detected {
+        println!("[+] Prompt U-Boot terdeteksi (setelah {spam_count}x Enter).");
+    } else {
+        println!("[!] Prompt U-Boot belum terdeteksi (setelah {spam_count}x Enter).");
+        println!("    Kalau belum masuk, colok power lalu jalankan ulang.");
+    }
+
+    // Fase 2a: mode non-interaktif — kirim command otomatis lalu selesai.
+    if let Some(cmd) = send_cmd {
+        println!("[*] Mengirim command: {cmd}");
+        std::thread::sleep(Duration::from_millis(300));
+        let _ = conn.write(format!("{cmd}\r\n").as_bytes());
+
+        // Baca output selama beberapa detik.
+        let read_until = Instant::now() + Duration::from_secs(8);
+        let mut out = Vec::new();
+        while Instant::now() < read_until {
+            match conn.read_for(Duration::from_millis(200)) {
+                Ok(data) if !data.is_empty() => out.extend_from_slice(&data),
+                Ok(_) => {}
+                Err(_) => break,
+            }
+        }
+        print!("{}", String::from_utf8_lossy(&out));
+        if let Some(p) = &log_path {
+            let _ = std::fs::write(p, &out);
+            println!("\n[+] Output disimpan: {p}");
+        }
+        println!("\n[+] Selesai.");
+        return Ok(());
+    }
+
+    println!("    Masuk mode interaktif. Contoh: `norm`, `safe`, `printenv`.\n");
+
+    // Fase 2b: interaktif (sama seperti terminal biasa).
+    let (tx_to_dev, rx_to_dev) = mpsc::channel::<Vec<u8>>();
+    let (tx_from_dev, rx_from_dev) = mpsc::channel::<Vec<u8>>();
+    std::thread::spawn(move || {
+        worker(conn, rx_to_dev, tx_from_dev);
+    });
+
+    let mut log_file = match &log_path {
+        Some(p) => Some(std::fs::File::create(p).context("gagal membuat file log")?),
+        None => None,
+    };
+
+    ct::enable_raw_mode().context("gagal enable raw mode")?;
+    let result = run_loop(&rx_from_dev, &tx_to_dev, b"\r", &mut log_file);
+    let _ = ct::disable_raw_mode();
+
+    println!("\n\n[+] U-Boot mode ditutup.");
+    result
+}
+
 /// Worker: baca dari device & tulis ke device (memiliki Connection).
 fn worker(mut conn: Connection, rx_to_dev: Receiver<Vec<u8>>, tx_from_dev: Sender<Vec<u8>>) {
     let mut buf = [0u8; 4096];

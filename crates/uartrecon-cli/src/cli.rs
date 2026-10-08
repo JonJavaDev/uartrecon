@@ -320,6 +320,34 @@ pub enum Command {
         code: String,
     },
 
+    /// Masuk U-Boot: auto-spam Enter untuk hentikan autoboot, lalu interaktif.
+    ///
+    /// Cocok untuk device dengan autoboot cepat (bootdelay=0). Setelah prompt
+    /// U-Boot ketangkap, langsung bisa ketik `norm`, `safe`, `printenv`, dll.
+    Uboot {
+        /// Nama port (mis. COM3).
+        port: String,
+        /// Baudrate.
+        #[arg(long, default_value_t = 115_200)]
+        baud: u32,
+        /// Format (mis. 8N1).
+        #[arg(long, default_value = "8N1")]
+        format: String,
+        /// Kirim `reboot` dulu (kalau sudah berada di shell device).
+        #[arg(long)]
+        reboot: bool,
+        /// Auto-kirim command U-Boot setelah prompt ketangkap (non-interaktif).
+        /// Contoh: --send "norm" atau --send "printenv"
+        #[arg(long)]
+        send: Option<String>,
+        /// Lama spam Enter (detik).
+        #[arg(long, default_value_t = 30)]
+        seconds: u64,
+        /// Simpan sesi ke file (raw).
+        #[arg(long)]
+        log: Option<String>,
+    },
+
     /// Terminal interaktif real-time via UART (kirim & terima langsung).
     ///
     /// Berbeda dari `connect` (yang mengirim per-baris), `terminal` menampilkan

@@ -79,6 +79,7 @@ pub fn interactive_menu(_color: bool) -> Result<()> {
         println!("  [5] Analisis file capture / sesi");
         println!("  [6] Logic analyzer (waveform)");
         println!("  [m] TERMINAL interaktif (real-time, seperti PuTTY)");
+        println!("  [u] U-BOOT (auto-spam Enter, lalu interaktif)");
         println!("  -- Analisis Lanjutan --");
         println!("  [s] Search pola (literal/regex/hex)");
         println!("  [t] Strings (ekstraksi teks)");
@@ -141,6 +142,23 @@ pub fn interactive_menu(_color: bool) -> Result<()> {
                     let (baud, fmt) = prompt_config()?;
                     let enter = prompt("Line-ending Enter (cr/lf/crlf)", "cr")?;
                     terminal(&port, baud, &fmt, &enter, None, true)?;
+                }
+            }
+            "u" | "U" => {
+                if let Some(port) = pick_port()? {
+                    let (baud, fmt) = prompt_config()?;
+                    let rb = prompt("Kirim reboot dulu? (y/N)", "n")?;
+                    uboot(
+                        &port,
+                        baud,
+                        &fmt,
+                        crate::terminal::UbootOptions {
+                            reboot: rb.eq_ignore_ascii_case("y"),
+                            spam_secs: 30,
+                            send_cmd: None,
+                            log_path: None,
+                        },
+                    )?;
                 }
             }
             "s" | "S" => {
@@ -1549,4 +1567,14 @@ pub fn lang(code: &str, _color: bool) -> Result<()> {
     println!("Bahasa diganti ke {} ({})", l.name(), l.code());
     println!("Config: {}", written.display());
     Ok(())
+}
+
+/// `uboot`: masuk U-Boot dengan auto-spam Enter, lalu interaktif.
+pub fn uboot(
+    port: &str,
+    baud: u32,
+    format: &str,
+    opts: crate::terminal::UbootOptions,
+) -> Result<()> {
+    crate::terminal::uboot(port, baud, format, opts)
 }

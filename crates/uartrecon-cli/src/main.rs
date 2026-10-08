@@ -138,5 +138,24 @@ fn run(cli: Cli) -> anyhow::Result<()> {
         }) => commands::flash_lede(&action, &port, baud, &image, target_mtd, color),
         Some(Command::Doctor) => commands::doctor(color),
         Some(Command::Lang { code }) => commands::lang(&code, color),
+        Some(Command::Uboot {
+            port,
+            baud,
+            format,
+            reboot,
+            send,
+            seconds,
+            log,
+        }) => commands::uboot(
+            &port,
+            baud,
+            &format,
+            terminal::UbootOptions {
+                reboot,
+                spam_secs: seconds,
+                send_cmd: send,
+                log_path: log,
+            },
+        ),
     }
 }
