@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STB Web Server</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>STB Web Server</h1>
+      <p class="subtitle">ZTE B700V5S1 &middot; ARM1176JZF-S &middot; LEDE 17.01.6</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>Server Aktif</h2>
+      <p>Halaman ini disajikan langsung dari STB melalui <code>uhttpd</code>.</p>
+      <ul class="info">
+        <li><strong>Web server:</strong> uhttpd</li>
+        <li><strong>Document root:</strong> <code>/www/site</code></li>
+        <li><strong>Upload:</strong> via SCP/SFTP (lihat panduan)</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Status</h2>
+      <p>Waktu server: <span id="clock">-</span></p>
+      <p>Halaman dimuat: <span id="loaded">-</span></p>
+    </section>
+
+    <section class="card">
+      <h2>Mulai</h2>
+      <p>Ganti file <code>index.html</code> ini dengan konten Anda, lalu upload:</p>
+      <pre><code>pscp -scp index.html root@&lt;IP-STB&gt;:/www/site/</code></pre>
+      <p>Lihat <code>docs/stb-hosting.md</code> untuk panduan lengkap.</p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>STB Web Server &middot; dibuat dengan UARTRecon</p>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
