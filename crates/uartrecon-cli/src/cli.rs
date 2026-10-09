@@ -343,6 +343,15 @@ pub enum Command {
         /// Lama spam Enter (detik).
         #[arg(long, default_value_t = 30)]
         seconds: u64,
+        /// Jeda antar spam (milidetik).
+        #[arg(long, default_value_t = 50)]
+        spam_delay: u64,
+        /// Tombol spam: enter | space | ctrl-c.
+        #[arg(long, default_value = "enter")]
+        spam_key: String,
+        /// Jeda antar command saat --send (milidetik).
+        #[arg(long, default_value_t = 300)]
+        send_delay: u64,
         /// Simpan sesi ke file (raw).
         #[arg(long)]
         log: Option<String>,
@@ -354,6 +363,8 @@ pub enum Command {
     /// output device secara live dan meneruskan setiap tombol yang Anda tekan.
     /// Cocok untuk masuk shell device (BusyBox/LEDE), lihat bootlog, atau
     /// berinteraksi seperti di Tera Term/PuTTY.
+    ///
+    /// Hotkey: Ctrl+] keluar, Ctrl+T timestamp, Ctrl+H bantuan.
     Terminal {
         /// Nama port (mis. COM3).
         port: String,
@@ -366,10 +377,25 @@ pub enum Command {
         /// Kirim line-ending CR (default CR, cocok untuk BusyBox/Linux).
         #[arg(long, default_value = "cr")]
         enter: String,
-        /// Spam Enter dulu N detik (hentikan autoboot U-Boot), lalu interaktif.
+        /// Spam tombol dulu N detik (hentikan autoboot U-Boot), lalu interaktif.
         /// Contoh: --spam 20
         #[arg(long, default_value_t = 0)]
         spam: u64,
+        /// Jeda antar spam (milidetik).
+        #[arg(long, default_value_t = 50)]
+        spam_delay: u64,
+        /// Tombol spam: enter | space | ctrl-c.
+        #[arg(long, default_value = "enter")]
+        spam_key: String,
+        /// Deteksi baudrate otomatis sebelum connect.
+        #[arg(long)]
+        auto: bool,
+        /// Tampilkan timestamp di log (bisa toggle dengan Ctrl+T).
+        #[arg(long)]
+        timestamp: bool,
+        /// Mode backspace: bs (0x08) | del (0x7f).
+        #[arg(long, default_value = "bs")]
+        backspace: String,
         /// Simpan seluruh sesi ke file (raw).
         #[arg(long)]
         log: Option<String>,
