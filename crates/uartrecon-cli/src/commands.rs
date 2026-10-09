@@ -1246,17 +1246,22 @@ fn run_device_cmd(port: &str, config: SerialConfig, cmd: &str, wait_ms: u64) -> 
     let deadline = std::time::Instant::now() + Duration::from_millis(wait_ms);
     let mut out = Vec::new();
     let mut buf = [0u8; 4096];
+    // Jeda minimal setelah data pertama agar output lengkap.
+    let mut last_data = std::time::Instant::now();
     while std::time::Instant::now() < deadline {
         match conn.read(&mut buf) {
-            Ok(0) => std::thread::sleep(Duration::from_millis(20)),
-            Ok(n) => out.extend_from_slice(&buf[..n]),
+            Ok(0) => {
+                // Kalau sudah ada data dan idle > 300ms, anggap selesai.
+                if !out.is_empty() && last_data.elapsed() > Duration::from_millis(300) {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            Ok(n) => {
+                out.extend_from_slice(&buf[..n]);
+                last_data = std::time::Instant::now();
+            }
             Err(_) => break,
-        }
-        // Berhenti lebih awal bila sudah ada prompt '#' setelah data.
-        if out.len() > 64 && out.windows(2).rev().take(32).any(|w| w == b"# ") {
-            // beri sedikit waktu lalu hentikan
-            std::thread::sleep(Duration::from_millis(100));
-            break;
         }
     }
     let _ = conn.close();
