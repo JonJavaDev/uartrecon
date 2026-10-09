@@ -1,0 +1,74 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="680" font-family="Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  <rect width="1000" height="680" fill="#e9ecef"/>
+
+  <!-- Browser chrome -->
+  <rect x="0" y="0" width="1000" height="64" fill="#f5f6f7"/>
+  <circle cx="24" cy="20" r="6" fill="#ff5f56"/><circle cx="44" cy="20" r="6" fill="#ffbd2e"/><circle cx="64" cy="20" r="6" fill="#27c93f"/>
+  <rect x="90" y="8" width="180" height="24" rx="6" fill="#ffffff"/>
+  <text x="104" y="25" font-size="12" fill="#333">LuCI - LEDE</text>
+  <rect x="90" y="38" width="880" height="22" rx="11" fill="#ffffff"/>
+  <text x="108" y="54" font-size="12" fill="#1a73e8">🔒 192.168.1.1/cgi-bin/luci/admin/status/overview</text>
+
+  <!-- LuCI header bar -->
+  <rect x="0" y="64" width="1000" height="50" fill="#2c3e50"/>
+  <text x="24" y="96" font-size="22" font-weight="700" fill="#ffffff">LEDE</text>
+  <text x="100" y="96" font-size="12" fill="#9db2c8">uartrecon</text>
+  <text x="760" y="96" font-size="13" fill="#d6e2ef">System ▾</text>
+  <text x="850" y="96" font-size="13" fill="#d6e2ef">Services ▾</text>
+  <text x="945" y="96" font-size="13" fill="#ff8a80">Logout</text>
+
+  <!-- Sidebar -->
+  <rect x="0" y="114" width="230" height="566" fill="#34495e"/>
+  <text x="18" y="144" font-size="11" fill="#7f9cb5" letter-spacing="1">STATUS</text>
+  <rect x="0" y="152" width="230" height="32" fill="#1c2833"/>
+  <text x="26" y="173" font-size="14" fill="#ffffff">▸ Overview</text>
+  <text x="26" y="203" font-size="14" fill="#cdd8e3">  Firewall</text>
+  <text x="26" y="229" font-size="14" fill="#cdd8e3">  Routes</text>
+  <text x="26" y="255" font-size="14" fill="#cdd8e3">  System Log</text>
+  <text x="26" y="281" font-size="14" fill="#cdd8e3">  Kernel Log</text>
+  <text x="26" y="307" font-size="14" fill="#cdd8e3">  Processes</text>
+  <text x="18" y="339" font-size="11" fill="#7f9cb5" letter-spacing="1">SYSTEM</text>
+  <text x="26" y="363" font-size="14" fill="#cdd8e3">  System</text>
+  <text x="26" y="389" font-size="14" fill="#cdd8e3">  Administration</text>
+  <text x="26" y="415" font-size="14" fill="#cdd8e3">  Software</text>
+  <text x="26" y="441" font-size="14" fill="#cdd8e3">  Startup</text>
+  <text x="26" y="467" font-size="14" fill="#cdd8e3">  Scheduled Tasks</text>
+  <text x="26" y="493" font-size="14" fill="#cdd8e3">  Backup / Flash</text>
+  <text x="26" y="519" font-size="14" fill="#cdd8e3">  Reboot</text>
+  <text x="18" y="551" font-size="11" fill="#7f9cb5" letter-spacing="1">SERVICES</text>
+  <text x="26" y="575" font-size="14" fill="#cdd8e3">  Terminal</text>
+
+  <!-- Content area -->
+  <rect x="230" y="114" width="770" height="566" fill="#f0f2f5"/>
+  <text x="256" y="152" font-size="22" font-weight="600" fill="#2c3e50">Status Overview</text>
+
+  <!-- System card -->
+  <rect x="256" y="172" width="720" height="176" rx="4" fill="#ffffff" stroke="#dde1e5"/>
+  <text x="276" y="200" font-size="15" font-weight="600" fill="#2c3e50">System</text>
+  <line x1="256" y1="212" x2="976" y2="212" stroke="#eef0f2"/>
+  <text x="276" y="236" font-size="13" fill="#7f8c8d">Hostname</text>       <text x="430" y="236" font-size="13" fill="#2c3e50">uartrecon</text>
+  <text x="276" y="260" font-size="13" fill="#7f8c8d">Model</text>          <text x="430" y="260" font-size="13" fill="#2c3e50">ZTE B700V5S1 (MediaTek MT8653)</text>
+  <text x="276" y="284" font-size="13" fill="#7f8c8d">Firmware</text>       <text x="430" y="284" font-size="13" fill="#2c3e50">LEDE Reboot 17.01.6 r3979-2252731af4</text>
+  <text x="276" y="308" font-size="13" fill="#7f8c8d">Kernel</text>         <text x="430" y="308" font-size="13" fill="#2c3e50">2.6.35</text>
+  <text x="276" y="332" font-size="13" fill="#7f8c8d">Local Time</text>     <text x="430" y="332" font-size="13" fill="#2c3e50">Thu Jan 1 07:43:34 1970</text>
+
+  <!-- Memory card -->
+  <rect x="256" y="360" width="720" height="120" rx="4" fill="#ffffff" stroke="#dde1e5"/>
+  <text x="276" y="388" font-size="15" font-weight="600" fill="#2c3e50">Memory</text>
+  <line x1="256" y1="400" x2="976" y2="400" stroke="#eef0f2"/>
+  <text x="276" y="424" font-size="13" fill="#7f8c8d">Total Available</text> <text x="430" y="424" font-size="13" fill="#2c3e50">353.2 MB / 360.5 MB (2%)</text>
+  <rect x="276" y="438" width="660" height="16" rx="8" fill="#e8f5e9"/>
+  <rect x="276" y="438" width="14" height="16" rx="8" fill="#4caf50"/>
+  <text x="276" y="470" font-size="12" fill="#95a5a6">Buffered: 0 KB · Cached: 0 KB · Free: 353264 KB</text>
+
+  <!-- Network card -->
+  <rect x="256" y="492" width="720" height="120" rx="4" fill="#ffffff" stroke="#dde1e5"/>
+  <text x="276" y="520" font-size="15" font-weight="600" fill="#2c3e50">Network</text>
+  <line x1="256" y1="532" x2="976" y2="532" stroke="#eef0f2"/>
+  <text x="276" y="556" font-size="13" fill="#7f8c8d">Interface</text>   <text x="430" y="556" font-size="13" fill="#2c3e50">br-lan (eth0)</text>
+  <text x="276" y="580" font-size="13" fill="#7f8c8d">IPv4</text>        <text x="430" y="580" font-size="13" fill="#2c3e50">192.168.1.1/24</text>
+  <text x="276" y="604" font-size="13" fill="#7f8c8d">MAC</text>         <text x="430" y="604" font-size="13" fill="#2c3e50">74:97:81:B6:31:79</text>
+
+  <!-- Footer -->
+  <text x="256" y="650" font-size="11" fill="#95a5a6">Powered by LuCI lede-17.01 branch (git-18.201.27126-7bf0367) · LEDE 17.01.6</text>
+</svg>
