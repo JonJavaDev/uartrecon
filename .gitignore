@@ -40,3 +40,8 @@ desktop.ini
 *.zip
 *.msi
 *-setup.exe
+
+# Simulasi STB: berkas kerja (kernel, rootfs, image - besar, bisa diunduh ulang)
+/scripts/stb-sim/work/
+*.cpio.gz
+*.img
