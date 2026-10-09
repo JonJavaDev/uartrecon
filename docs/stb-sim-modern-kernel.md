@@ -15,6 +15,8 @@ STB asli:
 | RAM | 512 MB | 512 MB |
 | Flash | NAND 256 MB | disk image 256 MB |
 | Userspace | LEDE 17.01.6 (musl, armv6) | Alpine 3.24 (musl, armv6l) |
+| Watchdog | chip firmware MTK via `/proc/net/monitor` | emulasi via `/run/mtk/monitor` (reset paksa) |
+| Init | procd (respawn getty) | `/init` kustom (respawn getty) |
 
 CPU yang diemulasi **identik** dengan STB (`CPU part 0xb76`), jadi hasilnya
 representatif untuk uji kompatibilitas armv6l. Yang diganti hanya kernel
@@ -45,6 +47,57 @@ cd scripts\stb-sim
 
 Saat boot: tunggu prompt `STB-B700V5 login:`, lalu login `root` (tanpa password).
 Keluar dari QEMU: `Ctrl+A` lalu `X`.
+
+## Watchdog (realistis)
+
+STB asli punya **watchdog firmware MediaTek** yang dipantau lewat
+`/proc/net/monitor`. Bila userspace berhenti "menendang"-nya, chip watchdog
+**memutus & me-reboot paksa** mesin.
+
+Simulasi ini meniru semantik itu lewat `/run/mtk/monitor` + daemon
+`mtk-watchdogd` yang menendang tiap 5 detik. Bila feed berhenti, mesin
+**benar-benar reset** (`reboot -f`).
+
+> **Catatan emulasi**: watchdog hardware `bcm2835-wdt` di QEMU tidak dapat
+> dipakai karena `open("/dev/watchdog")` hang (celah emulasi blok PM BCM2835 -
+> sama seperti yang membuat kita perlu `initcall_blacklist=bcm2835_power`).
+> Karena itu semantik watchdog firmware diemulasikan secara software; efek
+> yang diamati (mesin reset) identik.
+
+Perintah kontrol (dari shell device):
+
+```sh
+wdt status   # tampilkan status (monitor, daemon, timeout)
+wdt on       # aktifkan watchdog (ditendang, mesin aman)
+wdt off      # matikan watchdog (aman, tidak akan reset)
+wdt hang     # berhenti menendang -> mesin RESET paksa ~15 detik
+```
+
+Contoh: mensimulasikan STB yang hang
+
+```
+STB-B700V5:~# wdt hang
+WATCHDOG FEED STOPPED -> mesin RESET dalam ~15 detik
+(simulasi userspace hang / watchdog firmware berhenti menendang)
+STB-B700V5:~# 
+================================================
+ WATCHDOG TIMEOUT! Firmware watchdog reset.
+================================================
+[   47.633711] reboot: Restarting system
+================================================================
+   UARTRecon - SIMULASI STB (ZTE B700V5S1)
+================================================================
+```
+
+## Kenapa tidak "sering mati" lagi
+
+Sebelumnya simulasi sering mati karena `/init` memakai `exec /sbin/getty`
+sebagai PID 1. Begitu getty keluar (logout, salah password 3x), PID 1 mati ->
+kernel panic `Attempted to kill init!`. STB asli tidak begitu: init (procd)
+**respawn** getty.
+
+Simulasi ini sekarang memakai `/init` yang me-respawn getty selamanya, jadi
+PID 1 tidak pernah mati. Logout/salah password tidak lagi mematikan mesin.
 
 ## Contoh keluaran
 

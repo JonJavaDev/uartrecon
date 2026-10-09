@@ -187,8 +187,11 @@ function Invoke-Run {
 
     $append = "console=ttyAMA0,115200 initcall_blacklist=bcm2835_power_driver_init loglevel=7"
     Write-Host "=== Boot STB simulation (kernel modern 6.x, CPU ARMv6) ===" -ForegroundColor Cyan
-    Write-Host "  RAM=$Mem MB  (Ctrl+A lalu X untuk keluar dari QEMU)`n" -ForegroundColor DarkGray
+    Write-Host "  RAM=$Mem MB  (Ctrl+A lalu X untuk keluar dari QEMU)" -ForegroundColor DarkGray
+    Write-Host "  Watchdog aktif: 'wdt status|on|off|hang'  (hang -> mesin reset)`n" -ForegroundColor DarkGray
 
+    # CATATAN: TANPA -no-reboot, agar watchdog bisa benar-benar me-reset mesin
+    # (reboot -f). Kalau pakai -no-reboot, QEMU akan keluar saat reset.
     $qargs = @(
         "-M", "raspi1ap",
         "-cpu", "arm1176",
@@ -198,8 +201,7 @@ function Invoke-Run {
         "-dtb", $dtb,
         "-append", $append,
         "-display", "none",
-        "-serial", "stdio",
-        "-no-reboot"
+        "-serial", "stdio"
     )
     if (Test-Path $nand) {
         $qargs += @("-drive", "file=$nand,if=sd,format=raw")
