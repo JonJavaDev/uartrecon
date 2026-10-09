@@ -148,6 +148,41 @@ uartrecon lang en
 
 Lihat semua: `uartrecon --help`
 
+## Terminal & U-Boot
+
+### Terminal interaktif (seperti PuTTY)
+
+```bash
+uartrecon terminal COM3
+uartrecon terminal COM3 --baud 115200 --auto      # deteksi baudrate otomatis
+uartrecon terminal COM3 --spam 20                 # spam Enter 20s (tangkan autoboot)
+uartrecon terminal COM3 --log session.log         # simpan sesi
+```
+
+**Hotkey**: `Ctrl+]` keluar · `Ctrl+T` timestamp · `Ctrl+H` bantuan.
+
+Opsi: `--enter cr|lf|crlf` · `--backspace bs|del` · `--spam-delay <ms>` ·
+`--spam-key enter|space|ctrl-c` · `--timestamp`.
+
+### U-Boot (auto-spam, anti-ribet)
+
+Masuk U-Boot otomatis walau autoboot cepat (`bootdelay=0`):
+
+```bash
+# Masuk U-Boot lalu interaktif (ketik 'norm', 'safe', 'printenv', ...)
+uartrecon uboot COM3
+
+# Reboot + auto-kirim command (non-interaktif, cocok skrip)
+uartrecon uboot COM3 --reboot --send "setenv system norm; saveenv; printenv"
+
+# Kalau bootloader butuh tombol lain
+uartrecon uboot COM3 --spam-key space
+```
+
+Opsi: `--reboot` · `--send <cmd;cmd>` (multi-command) · `--seconds <N>` ·
+`--spam-delay <ms>` · `--spam-key enter|space|ctrl-c` · `--send-delay <ms>` · `--log`.
+
+
 ## Catatan teknis
 
 USB-to-UART biasa nggak kasih timing sinyal mentah ke aplikasi, jadi deteksi baud
