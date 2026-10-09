@@ -401,6 +401,98 @@ pub enum Command {
         log: Option<String>,
     },
 
+    /// Kelola preset koneksi device (simpan/muat/hapus).
+    Preset {
+        /// Aksi: `list` | `show` | `save` | `remove`.
+        #[arg(default_value = "list")]
+        action: String,
+        /// Nama preset (untuk show/save/remove).
+        name: Option<String>,
+        /// Baudrate (untuk save).
+        #[arg(long)]
+        baud: Option<u32>,
+        /// Format, mis. `8N1` (untuk save).
+        #[arg(long)]
+        format: Option<String>,
+        /// Nama port (untuk save).
+        #[arg(long)]
+        port: Option<String>,
+        /// Deskripsi (untuk save).
+        #[arg(long)]
+        description: Option<String>,
+        /// Command U-Boot favorit (bisa diulang / dipisah koma).
+        #[arg(long = "uboot", value_delimiter = ',')]
+        uboot_commands: Vec<String>,
+        /// Command shell favorit (bisa diulang / dipisah koma).
+        #[arg(long = "cmd", value_delimiter = ',')]
+        shell_commands: Vec<String>,
+        /// Output JSON.
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Kelola macro command (rangkaian command tersimpan).
+    Macro {
+        /// Aksi: `list` | `show` | `save` | `remove` | `run`.
+        #[arg(default_value = "list")]
+        action: String,
+        /// Nama macro (untuk show/save/remove/run).
+        name: Option<String>,
+        /// Daftar command untuk save, dipisah `;`.
+        #[arg(long)]
+        commands: Option<String>,
+        /// Deskripsi (untuk save).
+        #[arg(long)]
+        description: Option<String>,
+        /// Jeda default antar command (milidetik).
+        #[arg(long, default_value_t = 500)]
+        wait_ms: u64,
+        /// Port (untuk run).
+        #[arg(long)]
+        port: Option<String>,
+        /// Baudrate (untuk run).
+        #[arg(long, default_value_t = 115_200)]
+        baud: u32,
+        /// Format (untuk run).
+        #[arg(long, default_value = "8N1")]
+        format: String,
+        /// Output JSON.
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Auto-login ke device via UART (tunggu prompt, kirim kredensial).
+    ///
+    /// Contoh: `uartrecon login COM3 --user root --password toor --shell`
+    Login {
+        /// Nama port (mis. COM3).
+        port: String,
+        /// Baudrate.
+        #[arg(long, default_value_t = 115_200)]
+        baud: u32,
+        /// Format (mis. 8N1).
+        #[arg(long, default_value = "8N1")]
+        format: String,
+        /// Username.
+        #[arg(long)]
+        user: Option<String>,
+        /// Password.
+        #[arg(long)]
+        password: Option<String>,
+        /// Ambil baud/format dari preset ini.
+        #[arg(long)]
+        preset: Option<String>,
+        /// Timeout menunggu tiap prompt (detik).
+        #[arg(long, default_value_t = 8)]
+        timeout: u64,
+        /// Buka terminal interaktif setelah login berhasil.
+        #[arg(long)]
+        shell: bool,
+        /// Simpan seluruh sesi ke file (raw).
+        #[arg(long)]
+        log: Option<String>,
+    },
+
     /// Flash LEDE/OpenWrt ke partisi rootfs STB (workflow otomatis).
     ///
     /// Mengikuti metode yang terbukti: boot ke slot lain, timpa rootfs dorman,

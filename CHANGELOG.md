@@ -7,6 +7,15 @@ dan proyek ini mengikuti [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Preset device** (`uartrecon-core::preset`): simpan/muat konfigurasi koneksi
+  per device (baudrate, format, port, command favorit) sebagai TOML.
+  Subcommand: `preset list|show|save|remove`.
+- **Macro command** (`uartrecon-core::macro_cmd`): rangkaian command tersimpan
+  yang dijalankan berurutan (dengan `wait_ms`, `timeout_ms`, dan `expect`).
+  Subcommand: `macro list|show|save|remove|run`.
+- **Auto-login** (`uartrecon-core::login`): deteksi prompt device (login,
+  password, shell, U-Boot) dan otomasi login via UART. Subcommand: `login`.
+- Integrasi menu interaktif: `[n]` auto-login, `[p]` preset, `[k]` macro.
 - **Logic analyzer** (`uartrecon-core::logic`): physical-layer UART decoding
   dari waveform digital (edge detection, pulse stats, estimasi baud fisik,
   decoder UART lengkap dengan parity & stop bits).
@@ -25,8 +34,12 @@ dan proyek ini mengikuti [Semantic Versioning](https://semver.org/).
 - **Menu interaktif** di CLI saat dijalankan tanpa argumen.
 - TUI panel waveform.
 - Subcommand CLI: `logic`, `search`, `strings`, `entropy`, `signatures`,
-  `stats`, `diff`, `config`.
+  `stats`, `diff`, `config`, `preset`, `macro`, `login`.
 - CI workflow (Windows + Linux + macOS) dan release workflow.
+
+### Fixed
+- **Stack overflow** saat parsing argumen (build debug Windows) akibat enum
+  subcommand clap yang besar — CLI kini dijalankan di thread ber-stack 16 MiB.
 
 ## [0.1.0] - 2026-10-08
 

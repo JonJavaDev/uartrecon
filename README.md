@@ -68,6 +68,8 @@ Semua **read-only** — nggak ada operasi tulis/erase flash.
 
 **Operasi Device**
 - Terminal interaktif real-time (Ctrl+] keluar)
+- Auto-login ke device (tunggu prompt, kirim kredensial)
+- Preset koneksi per device & macro command tersimpan
 - Safety: blokir command ke partisi kritis
 - Backup & restore partisi via SD card
 - Flash LEDE/OpenWrt ke STB (workflow otomatis)
@@ -142,6 +144,11 @@ uartrecon safety
 uartrecon safety --check "flash_erase /dev/mtd1 0 1"
 uartrecon recover plan --device STB
 
+# Preset, macro & auto-login
+uartrecon preset save stb --baud 115200 --format 8N1
+uartrecon macro run info --port COM3
+uartrecon login COM3 --user root --password toor --shell
+
 # Ganti bahasa
 uartrecon lang en
 ```
@@ -181,6 +188,72 @@ uartrecon uboot COM3 --spam-key space
 
 Opsi: `--reboot` · `--send <cmd;cmd>` (multi-command) · `--seconds <N>` ·
 `--spam-delay <ms>` · `--spam-key enter|space|ctrl-c` · `--send-delay <ms>` · `--log`.
+
+
+## Preset, Macro & Auto-login
+
+### Preset koneksi device
+
+Simpan baudrate/format/command favorit per device, biar nggak ketik ulang:
+
+```bash
+# Simpan preset
+uartrecon preset save stb-b700 --baud 115200 --format 8N1 \
+    --description "ZTE B700V5" --uboot "norm,safe"
+
+# Lihat daftar & detail
+uartrecon preset list
+uartrecon preset show stb-b700
+
+# Hapus
+uartrecon preset remove stb-b700
+```
+
+Disimpan sebagai TOML di `%APPDATA%\uartrecon\presets\` (Windows) atau
+`~/.config/uartrecon/presets/` (Linux/macOS).
+
+### Macro command
+
+Rangkaian command yang bisa dijalankan berurutan (otomasi):
+
+```bash
+# Simpan macro (command dipisah ';')
+uartrecon macro save info --commands "uname -a;cat /proc/mtd;free" \
+    --description "Info device"
+
+# Jalankan ke device (buka koneksi sekali, pakai ulang)
+uartrecon macro run info --port COM3 --baud 115200
+
+# Lihat daftar / detail / hapus
+uartrecon macro list
+uartrecon macro show info
+uartrecon macro remove info
+```
+
+Tiap langkah punya `wait_ms` & `timeout_ms`; bisa juga `expect` (tunggu pola
+muncul sebelum lanjut). Disimpan di `%APPDATA%\uartrecon\macros\`.
+
+### Auto-login
+
+Tunggu prompt login device, kirim kredensial, lalu (opsional) masuk terminal:
+
+```bash
+# Login dengan kredensial
+uartrecon login COM3 --user root --password toor
+
+# Pakai baud/format dari preset
+uartrecon login COM3 --preset stb-b700 --user admin
+
+# Langsung masuk terminal interaktif setelah login
+uartrecon login COM3 --user root --password toor --shell
+
+# Simpan seluruh sesi login
+uartrecon login COM3 --user root --password toor --log login.log
+```
+
+Deteksi prompt mendukung `login:`, `Password:`, shell (`root@LEDE:/#`, `$ `),
+dan prompt U-Boot (`STB-BOOT #`, `=> `). Semua logika deteksi murni (tanpa I/O)
+sehingga teruji tanpa hardware.
 
 
 ## Catatan teknis

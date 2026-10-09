@@ -57,6 +57,9 @@ pub fn print_help() {
     println!("  uartrecon analyze <FILE>                 Analisis capture");
     println!("  uartrecon logic --demo | --file <FILE>   Logic analyzer (waveform)");
     println!("  uartrecon session [NAME]                 Lihat sesi tersimpan");
+    println!("  uartrecon preset list                    Preset koneksi device");
+    println!("  uartrecon macro run <NAME> --port COM3   Jalankan macro command");
+    println!("  uartrecon login COM3 --user root         Auto-login ke device");
     println!("  uartrecon doctor                         Cek environment");
 }
 
@@ -80,6 +83,7 @@ pub fn interactive_menu(_color: bool) -> Result<()> {
         println!("  [6] Logic analyzer (waveform)");
         println!("  [m] TERMINAL interaktif (real-time, seperti PuTTY)");
         println!("  [u] U-BOOT (auto-spam Enter, lalu interaktif)");
+        println!("  [n] AUTO-LOGIN ke device (tunggu prompt, kirim kredensial)");
         println!("  -- Analisis Lanjutan --");
         println!("  [s] Search pola (literal/regex/hex)");
         println!("  [t] Strings (ekstraksi teks)");
@@ -90,6 +94,8 @@ pub fn interactive_menu(_color: bool) -> Result<()> {
         println!("  -- Lainnya --");
         println!("  [7] Lihat sesi tersimpan");
         println!("  [8] Doctor (cek environment)");
+        println!("  [p] Preset device (simpan/muat koneksi)");
+        println!("  [k] Macro command (rangkaian command)");
         println!("  [c] Konfigurasi");
         println!("  [l] Ganti bahasa (ID/EN)");
         println!("  [f] Flash LEDE/OpenWrt ke rootfs (workflow)");
@@ -171,6 +177,34 @@ pub fn interactive_menu(_color: bool) -> Result<()> {
                     )?;
                 }
             }
+            "n" | "N" => {
+                if let Some(port) = pick_port()? {
+                    let (baud, fmt) = prompt_config()?;
+                    let user = prompt("Username (kosongkan bila tidak perlu)", "")?;
+                    let pass = prompt("Password (kosongkan bila tidak perlu)", "")?;
+                    let sh = prompt("Masuk terminal setelah login? (y/N)", "y")?;
+                    login(
+                        &port,
+                        baud,
+                        &fmt,
+                        if user.trim().is_empty() {
+                            None
+                        } else {
+                            Some(user)
+                        },
+                        if pass.trim().is_empty() {
+                            None
+                        } else {
+                            Some(pass)
+                        },
+                        None,
+                        8,
+                        sh.eq_ignore_ascii_case("y"),
+                        None,
+                        true,
+                    )?;
+                }
+            }
             "s" | "S" => {
                 let file = prompt("Path file/sesi", "")?;
                 if !file.trim().is_empty() {
@@ -242,6 +276,55 @@ pub fn interactive_menu(_color: bool) -> Result<()> {
                         flash_lede(&act, &port, 115200, &image, target, true)?;
                     }
                 }
+            }
+            "p" | "P" => {
+                let act = prompt("Aksi preset (list/show/save/remove)", "list")?;
+                let name = if act == "list" {
+                    None
+                } else {
+                    let n = prompt("Nama preset", "")?;
+                    if n.trim().is_empty() { None } else { Some(n) }
+                };
+                let (baud, fmt) = if act == "save" {
+                    let (b, f) = prompt_config()?;
+                    (Some(b), Some(f))
+                } else {
+                    (None, None)
+                };
+                preset(
+                    &act,
+                    name,
+                    baud,
+                    fmt,
+                    None,
+                    None,
+                    Vec::new(),
+                    Vec::new(),
+                    false,
+                    true,
+                )?;
+            }
+            "k" | "K" => {
+                let act = prompt("Aksi macro (list/show/save/remove/run)", "list")?;
+                let name = if act == "list" {
+                    None
+                } else {
+                    let n = prompt("Nama macro", "")?;
+                    if n.trim().is_empty() { None } else { Some(n) }
+                };
+                let (cmds, port, baud, fmt) = match act.as_str() {
+                    "save" => {
+                        let c = prompt("Commands (dipisah ';')", "")?;
+                        (Some(c), None, 115_200, "8N1".to_string())
+                    }
+                    "run" => {
+                        let p = pick_port()?;
+                        let (b, f) = prompt_config()?;
+                        (None, p, b, f)
+                    }
+                    _ => (None, None, 115_200, "8N1".to_string()),
+                };
+                macro_cmd(&act, name, cmds, None, 500, port, baud, &fmt, false, true)?;
             }
             "q" | "Q" | "exit" | "quit" => break,
             other => {
@@ -1079,6 +1162,455 @@ pub fn config(path: bool, init: bool, json: bool, _color: bool) -> Result<()> {
     ui::kv("Entropy block", &cfg.entropy_block_size.to_string());
     ui::kv("Color", &cfg.color.to_string());
     Ok(())
+}
+
+/// `preset`: kelola preset koneksi device.
+#[allow(clippy::too_many_arguments)]
+pub fn preset(
+    action: &str,
+    name: Option<String>,
+    baud: Option<u32>,
+    format: Option<String>,
+    port: Option<String>,
+    description: Option<String>,
+    uboot_commands: Vec<String>,
+    shell_commands: Vec<String>,
+    json: bool,
+    _color: bool,
+) -> Result<()> {
+    use uartrecon_core::preset as p;
+
+    match action {
+        "list" => {
+            let list = p::list()?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&list)?);
+                return Ok(());
+            }
+            ui::header("PRESET");
+            ui::kv("Direktori", &p::presets_dir().display().to_string());
+            if list.is_empty() {
+                println!("\n  (belum ada preset)");
+                println!("  Buat: uartrecon preset save <nama> --baud 115200 --format 8N1");
+                return Ok(());
+            }
+            println!();
+            for pr in &list {
+                let desc = if pr.description.is_empty() {
+                    String::new()
+                } else {
+                    format!("  - {}", pr.description)
+                };
+                println!("  {:<16} {} {}{}", pr.name, pr.baudrate, pr.format, desc);
+            }
+        }
+        "show" => {
+            let name = name.ok_or_else(|| anyhow::anyhow!("nama preset wajib"))?;
+            let pr = p::load(&name)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&pr)?);
+                return Ok(());
+            }
+            print_preset(&pr);
+        }
+        "save" => {
+            let name = name.ok_or_else(|| anyhow::anyhow!("nama preset wajib"))?;
+            let baud = baud.unwrap_or(115_200);
+            let fmt = format.unwrap_or_else(|| "8N1".to_string());
+            // Validasi format lebih awal.
+            uartrecon_core::serial::config::SerialFormat::parse(&fmt)
+                .with_context(|| format!("format '{fmt}' tidak valid"))?;
+            let mut pr = p::Preset::new(&name, baud, &fmt);
+            pr.port = port;
+            pr.description = description.unwrap_or_default();
+            pr.uboot_commands = uboot_commands;
+            pr.shell_commands = shell_commands;
+            let path = p::save(&pr)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&pr)?);
+                return Ok(());
+            }
+            println!("[+] Preset '{}' disimpan ke {}", pr.name, path.display());
+        }
+        "remove" | "rm" | "delete" => {
+            let name = name.ok_or_else(|| anyhow::anyhow!("nama preset wajib"))?;
+            let removed = p::remove(&name)?;
+            if removed {
+                println!("[+] Preset '{name}' dihapus.");
+            } else {
+                ui::warn(&format!("preset '{name}' tidak ditemukan"));
+            }
+        }
+        other => bail!("action '{other}' tidak dikenal (list|show|save|remove)"),
+    }
+    Ok(())
+}
+
+/// Menampilkan detail satu preset.
+fn print_preset(pr: &uartrecon_core::preset::Preset) {
+    ui::header("PRESET");
+    ui::kv("Nama", &pr.name);
+    if !pr.description.is_empty() {
+        ui::kv("Deskripsi", &pr.description);
+    }
+    ui::kv("Baudrate", &pr.baudrate.to_string());
+    ui::kv("Format", &pr.format);
+    if let Some(port) = &pr.port {
+        ui::kv("Port", port);
+    }
+    if !pr.uboot_commands.is_empty() {
+        ui::kv("U-Boot cmds", &pr.uboot_commands.join(", "));
+    }
+    if !pr.shell_commands.is_empty() {
+        ui::kv("Shell cmds", &pr.shell_commands.join(", "));
+    }
+}
+
+/// `macro`: kelola & jalankan macro command.
+#[allow(clippy::too_many_arguments)]
+pub fn macro_cmd(
+    action: &str,
+    name: Option<String>,
+    commands: Option<String>,
+    description: Option<String>,
+    wait_ms: u64,
+    port: Option<String>,
+    baud: u32,
+    format: &str,
+    json: bool,
+    _color: bool,
+) -> Result<()> {
+    use uartrecon_core::macro_cmd as m;
+
+    match action {
+        "list" => {
+            let list = m::list()?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&list)?);
+                return Ok(());
+            }
+            ui::header("MACRO");
+            ui::kv("Direktori", &m::macros_dir().display().to_string());
+            if list.is_empty() {
+                println!("\n  (belum ada macro)");
+                println!("  Buat: uartrecon macro save info --commands \"uname -a;cat /proc/mtd\"");
+                return Ok(());
+            }
+            println!();
+            for mac in &list {
+                let desc = if mac.description.is_empty() {
+                    String::new()
+                } else {
+                    format!("  - {}", mac.description)
+                };
+                println!("  {:<16} {} langkah{}", mac.name, mac.steps.len(), desc);
+            }
+        }
+        "show" => {
+            let name = name.ok_or_else(|| anyhow::anyhow!("nama macro wajib"))?;
+            let mac = m::load(&name)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&mac)?);
+                return Ok(());
+            }
+            ui::header("MACRO");
+            ui::kv("Nama", &mac.name);
+            if !mac.description.is_empty() {
+                ui::kv("Deskripsi", &mac.description);
+            }
+            println!();
+            for (i, step) in mac.steps.iter().enumerate() {
+                println!(
+                    "  [{}] {:<28} (wait {} ms{})",
+                    i + 1,
+                    step.send,
+                    step.wait_ms,
+                    step.expect
+                        .as_ref()
+                        .map(|e| format!(", expect '{e}'"))
+                        .unwrap_or_default()
+                );
+            }
+        }
+        "save" => {
+            let name = name.ok_or_else(|| anyhow::anyhow!("nama macro wajib"))?;
+            let cmds = commands.ok_or_else(|| anyhow::anyhow!("--commands wajib"))?;
+            let list: Vec<&str> = cmds
+                .split(';')
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .collect();
+            if list.is_empty() {
+                bail!("--commands kosong");
+            }
+            let mut mac = m::Macro::from_commands(&name, &list);
+            mac.description = description.unwrap_or_default();
+            for step in &mut mac.steps {
+                step.wait_ms = wait_ms;
+            }
+            let path = m::save(&mac)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&mac)?);
+                return Ok(());
+            }
+            println!(
+                "[+] Macro '{}' ({} langkah) disimpan ke {}",
+                mac.name,
+                mac.steps.len(),
+                path.display()
+            );
+        }
+        "remove" | "rm" | "delete" => {
+            let name = name.ok_or_else(|| anyhow::anyhow!("nama macro wajib"))?;
+            let removed = m::remove(&name)?;
+            if removed {
+                println!("[+] Macro '{name}' dihapus.");
+            } else {
+                ui::warn(&format!("macro '{name}' tidak ditemukan"));
+            }
+        }
+        "run" => {
+            let name = name.ok_or_else(|| anyhow::anyhow!("nama macro wajib"))?;
+            let mac = m::load(&name)?;
+            let port = port.ok_or_else(|| anyhow::anyhow!("--port wajib untuk 'run'"))?;
+            let fmt = SerialFormat::parse(format).context("format tidak valid")?;
+            let config = SerialConfig::new(baud, fmt);
+
+            ui::header("MACRO RUN");
+            ui::kv("Macro", &mac.name);
+            ui::kv("Port", &format!("{port} @ {baud} {}", fmt.label()));
+            ui::kv("Langkah", &mac.steps.len().to_string());
+            println!();
+
+            // Buka koneksi sekali, pakai ulang untuk semua langkah (efisien).
+            let mut conn = Connection::open(&port, config).context("gagal membuka port")?;
+            let _ = conn.clear_input();
+            std::thread::sleep(Duration::from_millis(150));
+
+            let mut outputs: Vec<serde_json::Value> = Vec::new();
+            for (i, step) in mac.steps.iter().enumerate() {
+                println!("[{}/{}] > {}", i + 1, mac.steps.len(), step.send);
+                let _ = conn.write(format!("{}\r\n", step.send).as_bytes());
+
+                // Kumpulkan output sampai idle atau timeout.
+                let deadline = std::time::Instant::now() + step.timeout_duration();
+                let mut out = Vec::new();
+                let mut buf = [0u8; 4096];
+                let mut last_data = std::time::Instant::now();
+                while std::time::Instant::now() < deadline {
+                    match conn.read(&mut buf) {
+                        Ok(0) => {
+                            let idle = last_data.elapsed();
+                            // Ada data: selesai kalau idle 250 ms.
+                            // Tanpa data & tanpa expect: selesai setelah wait_ms.
+                            let done = if out.is_empty() {
+                                step.expect.is_none() && idle >= step.wait_duration()
+                            } else {
+                                idle > Duration::from_millis(250)
+                            };
+                            if done {
+                                break;
+                            }
+                            std::thread::sleep(Duration::from_millis(20));
+                        }
+                        Ok(n) => {
+                            out.extend_from_slice(&buf[..n]);
+                            last_data = std::time::Instant::now();
+                            let text = String::from_utf8_lossy(&out);
+                            if let Some(pat) = &step.expect
+                                && text.contains(pat.as_str())
+                            {
+                                break;
+                            }
+                        }
+                        Err(_) => break,
+                    }
+                }
+                let text = String::from_utf8_lossy(&out).to_string();
+                if !text.trim().is_empty() {
+                    println!("{}", text.trim_end());
+                }
+                let matched = step
+                    .expect
+                    .as_ref()
+                    .map(|p| text.contains(p.as_str()))
+                    .unwrap_or(true);
+                outputs.push(serde_json::json!({
+                    "step": i + 1,
+                    "send": step.send,
+                    "matched": matched,
+                    "output": text,
+                }));
+            }
+            let _ = conn.close();
+
+            if json {
+                println!("{}", serde_json::to_string_pretty(&outputs)?);
+            } else {
+                println!("\n[+] Macro '{}' selesai.", mac.name);
+            }
+        }
+        other => bail!("action '{other}' tidak dikenal (list|show|save|remove|run)"),
+    }
+    Ok(())
+}
+
+/// `login`: auto-login ke device via UART.
+#[allow(clippy::too_many_arguments)]
+pub fn login(
+    port: &str,
+    baud: u32,
+    format: &str,
+    user: Option<String>,
+    password: Option<String>,
+    preset: Option<String>,
+    timeout_secs: u64,
+    shell: bool,
+    log: Option<String>,
+    _color: bool,
+) -> Result<()> {
+    use uartrecon_core::login::{self, LoginPlan, PromptKind};
+
+    // Kalau pakai preset, ambil baud/format dari sana (kecuali di-override).
+    let (baud, fmt_str) = if let Some(pname) = preset {
+        let pr = uartrecon_core::preset::load(&pname)
+            .with_context(|| format!("preset '{pname}' tidak ditemukan"))?;
+        (pr.baudrate, pr.format)
+    } else {
+        (baud, format.to_string())
+    };
+
+    let fmt = SerialFormat::parse(&fmt_str).context("format tidak valid")?;
+    let config = SerialConfig::new(baud, fmt);
+
+    let mut plan = match (&user, &password) {
+        (Some(u), Some(p)) => LoginPlan::new(u.clone(), p.clone()),
+        _ => LoginPlan::default(),
+    };
+    plan.username = user;
+    plan.password = password;
+    plan.timeout_ms = timeout_secs.saturating_mul(1000);
+
+    ui::header("AUTO-LOGIN");
+    ui::kv("Port", &format!("{port} @ {baud} {}", fmt.label()));
+    match &plan.username {
+        Some(u) => ui::kv("Username", u),
+        None => ui::kv("Username", "(tidak diset)"),
+    }
+    if plan.password.is_some() {
+        ui::kv("Password", "********");
+    }
+    println!();
+
+    let mut conn = Connection::open(port, config).context("gagal membuka port")?;
+    let _ = conn.clear_input();
+
+    let mut log_buf: Vec<u8> = Vec::new();
+    let mut acc = String::new();
+    let steps = plan.steps();
+    let mut success = true;
+
+    println!("[*] Menunggu prompt device...");
+
+    for (idx, (wait_for, data)) in steps.iter().enumerate() {
+        // Tunggu prompt yang diminta (timeout per langkah).
+        let deadline = std::time::Instant::now() + Duration::from_millis(plan.timeout_ms);
+        let mut got = false;
+        let mut buf = [0u8; 4096];
+        while std::time::Instant::now() < deadline {
+            match conn.read(&mut buf) {
+                Ok(0) => std::thread::sleep(Duration::from_millis(20)),
+                Ok(n) => {
+                    log_buf.extend_from_slice(&buf[..n]);
+                    let text = String::from_utf8_lossy(&buf[..n]);
+                    print!("{text}");
+                    let _ = std::io::stdout().flush();
+                    acc.push_str(&text);
+                    if acc.len() > 16_384 {
+                        let cut = acc.len() - 8_192;
+                        acc = acc[cut..].to_string();
+                    }
+                    if let Some(kind) = login::detect_prompt(&acc)
+                        && prompt_matches(kind, *wait_for)
+                    {
+                        got = true;
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+
+        if !got {
+            println!(
+                "\n[!] Prompt '{}' tidak terdeteksi dalam {} detik.",
+                wait_for.label(),
+                timeout_secs
+            );
+            if *wait_for == PromptKind::Shell && plan.username.is_none() {
+                println!("    Device mungkin tidak butuh login - coba `terminal` langsung.");
+            }
+            success = false;
+            break;
+        }
+
+        // Kirim data kredensial (bila ada).
+        if let Some(data) = data {
+            println!(
+                "\n[*] Mengirim kredensial untuk prompt '{}'...",
+                wait_for.label()
+            );
+            conn.write(data)?;
+            std::thread::sleep(Duration::from_millis(plan.delay_ms));
+            acc.clear();
+        } else {
+            println!("\n[+] Shell siap.");
+        }
+
+        let _ = idx;
+    }
+
+    if success {
+        println!("\n[+] Login selesai.");
+    }
+
+    if let Some(path) = &log {
+        std::fs::write(path, &log_buf).with_context(|| format!("gagal menulis log '{path}'"))?;
+        println!("\n[+] Sesi disimpan ke {path}");
+    }
+
+    if shell {
+        println!("\n[*] Masuk terminal interaktif...");
+        drop(conn);
+        return terminal(
+            port,
+            baud,
+            &fmt_str,
+            crate::terminal::TerminalOptions {
+                log_path: None,
+                ..Default::default()
+            },
+        );
+    }
+
+    let _ = conn.close();
+    Ok(())
+}
+
+/// Apakah prompt yang terdeteksi cocok dengan prompt yang ditunggu.
+///
+/// Prompt shell dianggap cocok juga bila kita menunggu login (sebagian device
+/// langsung masuk shell tanpa login).
+fn prompt_matches(
+    detected: uartrecon_core::login::PromptKind,
+    want: uartrecon_core::login::PromptKind,
+) -> bool {
+    use uartrecon_core::login::PromptKind;
+    if detected == want {
+        return true;
+    }
+    // Kalau sudah di shell, semua langkah login dianggap selesai.
+    detected == PromptKind::Shell
 }
 
 /// `safety`: kebijakan keamanan & cek command.

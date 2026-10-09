@@ -8,7 +8,29 @@ mod ui;
 use clap::Parser;
 use cli::{Cli, Command};
 
+/// Ukuran stack thread utama (byte).
+///
+/// Parsing clap untuk enum subcommand yang besar menghasilkan stack frame
+/// yang lebar. Di build debug Windows hal ini bisa menyebabkan stack overflow,
+/// jadi kita jalankan semuanya di thread dengan stack eksplisit yang lebih besar.
+const MAIN_STACK_SIZE: usize = 16 * 1024 * 1024;
+
 fn main() {
+    // Jalankan di thread ber-stack besar agar parsing clap tidak overflow
+    // (khususnya di build debug).
+    let handle = std::thread::Builder::new()
+        .name("uartrecon-main".to_string())
+        .stack_size(MAIN_STACK_SIZE)
+        .spawn(real_main)
+        .expect("gagal membuat thread utama");
+
+    match handle.join() {
+        Ok(()) => {}
+        Err(_) => std::process::exit(1),
+    }
+}
+
+fn real_main() {
     let cli = Cli::parse();
     init_tracing(cli.verbose);
 
@@ -148,6 +170,63 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 backspace: terminal::BackspaceMode::parse(&backspace),
                 log_path: log,
             },
+        ),
+        Some(Command::Preset {
+            action,
+            name,
+            baud,
+            format,
+            port,
+            description,
+            uboot_commands,
+            shell_commands,
+            json,
+        }) => commands::preset(
+            &action,
+            name,
+            baud,
+            format,
+            port,
+            description,
+            uboot_commands,
+            shell_commands,
+            json,
+            color,
+        ),
+        Some(Command::Macro {
+            action,
+            name,
+            commands,
+            description,
+            wait_ms,
+            port,
+            baud,
+            format,
+            json,
+        }) => commands::macro_cmd(
+            &action,
+            name,
+            commands,
+            description,
+            wait_ms,
+            port,
+            baud,
+            &format,
+            json,
+            color,
+        ),
+        Some(Command::Login {
+            port,
+            baud,
+            format,
+            user,
+            password,
+            preset,
+            timeout,
+            shell,
+            log,
+        }) => commands::login(
+            &port, baud, &format, user, password, preset, timeout, shell, log, color,
         ),
         Some(Command::FlashLede {
             port,
