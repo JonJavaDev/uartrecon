@@ -201,24 +201,41 @@ pub fn uboot(port: &str, baud: u32, format: &str, opts: UbootOptions) -> Result<
     }
 
     // Fase 2a: mode non-interaktif — kirim command otomatis lalu selesai.
-    if let Some(cmd) = send_cmd {
-        println!("[*] Mengirim command: {cmd}");
-        std::thread::sleep(Duration::from_millis(300));
-        let _ = conn.write(format!("{cmd}\r\n").as_bytes());
+    // Beberapa command bisa dipisah dengan ';'.
+    if let Some(cmd_str) = send_cmd {
+        let cmds: Vec<&str> = cmd_str
+            .split(';')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .collect();
+        let mut all_out = Vec::new();
+        for cmd in cmds {
+            println!("[*] Mengirim: {cmd}");
+            std::thread::sleep(Duration::from_millis(300));
+            let _ = conn.write(format!("{cmd}\r\n").as_bytes());
 
-        // Baca output selama beberapa detik.
-        let read_until = Instant::now() + Duration::from_secs(8);
-        let mut out = Vec::new();
-        while Instant::now() < read_until {
-            match conn.read_for(Duration::from_millis(200)) {
-                Ok(data) if !data.is_empty() => out.extend_from_slice(&data),
-                Ok(_) => {}
-                Err(_) => break,
+            // Baca output sampai prompt U-Boot muncul lagi atau timeout.
+            let read_until = Instant::now() + Duration::from_secs(8);
+            let mut chunk = Vec::new();
+            while Instant::now() < read_until {
+                match conn.read_for(Duration::from_millis(200)) {
+                    Ok(data) if !data.is_empty() => {
+                        chunk.extend_from_slice(&data);
+                        // Berhenti kalau prompt U-Boot terlihat lagi.
+                        let s = String::from_utf8_lossy(&chunk);
+                        if s.matches("STB-BOOT #").count() >= 1 && chunk.len() > 40 {
+                            break;
+                        }
+                    }
+                    Ok(_) => {}
+                    Err(_) => break,
+                }
             }
+            print!("{}", String::from_utf8_lossy(&chunk));
+            all_out.extend_from_slice(&chunk);
         }
-        print!("{}", String::from_utf8_lossy(&out));
         if let Some(p) = &log_path {
-            let _ = std::fs::write(p, &out);
+            let _ = std::fs::write(p, &all_out);
             println!("\n[+] Output disimpan: {p}");
         }
         println!("\n[+] Selesai.");
