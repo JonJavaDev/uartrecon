@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: GPL-2.0-only
+menuconfig ARCH_MT85XX
+	bool "MediaTek MT85xx (STB SoC) support [EXPERIMENTAL]"
+	depends on ARCH_MULTI_V6
+	depends on CPU_LITTLE_ENDIAN
+	select ARM_AMBA
+	select CLKSRC_MMIO
+	select GPIOLIB
+	select PINCTRL
+	select POWER_RESET
+	help
+	  Support for MediaTek MT85xx family SoCs (e.g. MT8653) used in
+	  set-top boxes such as the ZTE B700V5S1.
+
+	  This is an ARM1176JZF-S (ARMv6K) SoC. Mainline Linux does NOT
+	  support it. This is an EXPERIMENTAL skeleton: it provides the
+	  platform descriptor and device tree hooks, but the SoC-specific
+	  drivers (timer, IRQ, clock, NAND, Ethernet, USB, video, watchdog)
+	  are missing and must be written from scratch using the hardware
+	  datasheet.
+
+	  Say N unless you are actively working on this port.
+
+if ARCH_MT85XX
+
+config MT85XX_TIMER
+	bool "MT85xx timer support"
+	default y
+	help
+	  Placeholder for the MT85xx timer/clocksource driver.
+	  Requires register-level documentation of the SoC.
+
+config MT85XX_UART
+	bool "MT85xx UART support"
+	default y
+	help
+	  Enable the MT85xx UART (for the serial console). The vendor
+	  kernel uses an 8250-compatible UART at an SoC-specific address.
+
+endif

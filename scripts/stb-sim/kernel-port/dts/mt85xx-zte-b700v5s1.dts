@@ -1,0 +1,120 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Device Tree Source for the ZTE B700V5S1 set-top box (MediaTek MT8653).
+ *
+ * ------------------------------------------------------------------------
+ * STATUS: EXPERIMENTAL / INCOMPLETE - WILL NOT BOOT A REAL DEVICE
+ * ------------------------------------------------------------------------
+ *
+ * This describes the hardware as far as it is known from the vendor
+ * firmware (LEDE 17.01.6 running on the vendor 2.6.35 kernel). Almost all
+ * peripherals lack upstream drivers, so most nodes here are placeholders.
+ *
+ * Memory / flash layout (from /proc/mtd on the device):
+ *   mtd0  NAND 256MiB 3,3V 8-bit   (whole chip)
+ *   mtd1  boot       1 MiB   bootloader          <- DO NOT TOUCH (brick)
+ *   mtd2  env        1 MiB   U-Boot environment
+ *   mtd3  conf       5 MiB   config
+ *   mtd4  logo       4 MiB   boot logo
+ *   mtd5  kernel1    5 MiB   kernel  (slot NORM)
+ *   mtd6  rootfs1    8 MiB   rootfs  (slot NORM)
+ *   mtd7  app1      65 MiB   application
+ *   mtd8  kernel2    5 MiB   kernel  (slot SAFE)
+ *   mtd9  rootfs2    8 MiB   rootfs  (slot SAFE)
+ *   mtd10 app2      65 MiB   application
+ *   mtd11 vas       20 MiB
+ *   mtd12 data      69 MiB
+ *
+ * RAM: 512 MB
+ */
+
+/dts-v1/;
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	model = "ZTE B700V5S1";
+	compatible = "zte,b700v5s1", "mediatek,mt8653", "mediatek,mt85xx";
+
+	chosen {
+		/*
+		 * Vendor kernel used: console=ttyAMA0,115200
+		 * Replace with the real earlycon once the UART is mapped.
+		 */
+		bootargs = "console=ttyS0,115200 earlycon";
+	};
+
+	/*
+	 * 512 MB RAM at 0x00000000 (vendor layout).
+	 * NOTE: exact base/size must be confirmed against the SoC.
+	 */
+	memory@0 {
+		device_type = "memory";
+		reg = <0x00000000 0x20000000>;	/* 512 MiB */
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,arm1176jzf-s";
+			reg = <0x0>;
+		};
+	};
+
+	/*
+	 * PLACEHOLDER: the MT85xx timer is a custom, undocumented block.
+	 * The address is unverified. The stub driver in mach-mt85xx/timer.c
+	 * returns -ENODEV until a real implementation exists.
+	 */
+	timer@100000 {
+		compatible = "mediatek,mt85xx-timer";
+		reg = <0x00100000 0x1000>;
+		interrupts = <0>;	/* PLACEHOLDER IRQ */
+	};
+
+	/*
+	 * PLACEHOLDER: vendor UART is 8250-compatible at an SoC-specific
+	 * address (shown as ttyAMA0 in the vendor kernel).
+	 */
+	serial@110000 {
+		compatible = "ns16550a";
+		reg = <0x00110000 0x100>;
+		clock-frequency = <3686400>;	/* PLACEHOLDER */
+		reg-shift = <2>;
+		interrupts = <1>;		/* PLACEHOLDER IRQ */
+	};
+
+	/*
+	 * PLACEHOLDER: NAND flash controller.
+	 * The vendor driver (mtk_nand) is proprietary; no upstream driver
+	 * exists. Partitions below are documented for reference only.
+	 */
+	nand-controller@200000 {
+		compatible = "mediatek,mt85xx-nand";	/* no driver upstream */
+		reg = <0x00200000 0x1000>;
+		status = "disabled";			/* no driver */
+	};
+
+	/*
+	 * PLACEHOLDER: Ethernet MAC ("star" in the vendor kernel).
+	 * Proprietary; no upstream driver.
+	 */
+	ethernet@300000 {
+		compatible = "mediatek,mt85xx-star-eth";	/* no driver upstream */
+		reg = <0x00300000 0x1000>;
+		status = "disabled";				/* no driver */
+	};
+
+	/*
+	 * PLACEHOLDER: USB host controller (vendor "MtkUsbHcd").
+	 * Proprietary; no upstream driver.
+	 */
+	usb@400000 {
+		compatible = "mediatek,mt85xx-usb";		/* no driver upstream */
+		reg = <0x00400000 0x1000>;
+		status = "disabled";				/* no driver */
+	};
+};
